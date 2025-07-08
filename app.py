@@ -7,11 +7,9 @@ import streamlit as st
 import os
 from PIL import Image
 
+# Afficher le logo en sidebar (en haut à gauche)
 logo = Image.open("logo.jpg")
-largeur_voulue = 200
-logo_resized = logo.resize((largeur_voulue, int(logo.height * largeur_voulue / logo.width)), Image.LANCZOS)
-st.sidebar.image(logo_resized)
-
+st.sidebar.image(logo, width=120)
 
 # -- Gestion utilisateurs avec mot de passe hashé --
 
