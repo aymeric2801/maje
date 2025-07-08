@@ -9,7 +9,7 @@ from PIL import Image
 
 # Afficher le logo en sidebar (en haut à gauche)
 logo = Image.open("logo.jpg")
-st.sidebar.image(logo, width=120)
+st.sidebar.image(logo, width=620)
 
 # -- Gestion utilisateurs avec mot de passe hashé --
 
