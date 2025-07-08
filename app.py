@@ -5,6 +5,13 @@ from pathlib import Path
 from datetime import datetime
 import streamlit as st
 import os
+from PIL import Image
+
+logo = Image.open("logo.jpg")
+largeur_voulue = 200
+logo_resized = logo.resize((largeur_voulue, int(logo.height * largeur_voulue / logo.width)), Image.LANCZOS)
+st.sidebar.image(logo_resized)
+
 
 # -- Gestion utilisateurs avec mot de passe hashé --
 
