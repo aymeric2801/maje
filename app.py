@@ -225,7 +225,7 @@ type_mapping = {
     "VIR": "client"
 }
 
-st.title(f"📋 Gestion des Relances - Utilisateur : {USER} | {MAGASIN.capitalize()}")
+st.title(f"Gestion des Relances - Utilisateur : {USER} | {MAGASIN.capitalize()}")
 
 types_disponibles = set()
 for row in reader:
