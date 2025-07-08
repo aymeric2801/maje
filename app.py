@@ -7,6 +7,9 @@ import streamlit as st
 import os
 from PIL import Image
 
+# 👉 Forcer le mode large
+st.set_page_config(layout="wide")
+
 # Afficher le logo en sidebar (en haut à gauche)
 logo = Image.open("logo.jpg")
 st.sidebar.image(logo, width=620)
