@@ -64,7 +64,16 @@ if st.session_state.username is None:
     st.stop()
 
 USER = st.session_state.username
+if USER not in users:
+    st.error(f"Utilisateur {USER} introuvable dans la base.")
+    st.stop()
+
+if "magasin" not in users[USER]:
+    st.error(f"Utilisateur {USER} n'a pas de magasin défini dans users.json.")
+    st.stop()
+
 MAGASIN = users[USER]["magasin"].lower()
+
 
 # -- Dossier commun au groupe (magasin) --
 GROUP_FOLDER = Path("users") / MAGASIN
