@@ -64,13 +64,13 @@ if st.session_state.username is None:
     st.stop()
 
 USER = st.session_state.username
-VILLE = users[USER]["ville"].lower()
+MAGASIN = users[USER]["magasin"].lower()
 
-# -- Dossier commun au groupe (ville) --
-GROUP_FOLDER = Path("users") / VILLE
+# -- Dossier commun au groupe (magasin) --
+GROUP_FOLDER = Path("users") / MAGASIN
 GROUP_FOLDER.mkdir(parents=True, exist_ok=True)
 
-# -- Gestion des relances partagées au niveau de la ville --
+# -- Gestion des relances partagées au niveau de la magasin --
 fichier_relances = GROUP_FOLDER / "relances.json"
 relances = {}
 if fichier_relances.exists():
@@ -86,11 +86,11 @@ if fichier_relances.exists():
                         relances[facture] = [data]
                     else:
                         relances[facture] = []
-                st.info(f"🔄 Relances chargées pour la ville : {VILLE}.")
+                st.info(f"🔄 Relances chargées pour le magasin : {MAGASIN}.")
     except json.JSONDecodeError:
         st.warning("⚠️ Fichier relances.json invalide, il sera écrasé à la prochaine sauvegarde.")
 
-# -- Gestion historique uploads partagés (ville) --
+# -- Gestion historique uploads partagés (magasin) --
 uploads_file = GROUP_FOLDER / "uploads.json"
 uploads = []
 if uploads_file.exists():
@@ -100,11 +100,75 @@ if uploads_file.exists():
     except:
         uploads = []
 
+# --- NOUVEAU : Sélection du fichier uploadé à afficher ---
+st.sidebar.markdown("### 📂 Sélection de la liste à afficher")
+if uploads:
+    filenames = [up["filename"] for up in uploads]
+    # sélection dans la sidebar, par défaut dernier fichier uploadé
+    selected_filename = st.sidebar.selectbox(
+        "Choisis une liste uploadée",
+        options=filenames,
+        index=len(filenames)-1
+    )
+else:
+    selected_filename = None
+
+# --- FIN NOUVEAU ---
+
 # -- Upload du fichier CSV --
 uploaded_file = st.file_uploader("📤 Dépose ton fichier CSV ici", type="csv")
 
+def lire_csv_depuis_fichier(file_path):
+    try:
+        with open(file_path, encoding="ISO-8859-1") as f:
+            toutes_lignes = []
+            for line in f:
+                line = line.strip()
+                if "total" in line.lower():
+                    break
+                toutes_lignes.append(line)
+        idx_entete = next((i for i, l in enumerate(toutes_lignes) if "facture" in l.lower()), None)
+        if idx_entete is None:
+            st.error("❌ En-tête introuvable dans le CSV.")
+            return None
+        lignes_utiles = toutes_lignes[idx_entete:]
+        reader = list(csv.DictReader(lignes_utiles, delimiter=";"))
+        return reader
+    except Exception as e:
+        st.error(f"Erreur lecture fichier CSV : {e}")
+        return None
+
+# --- NOUVEAU : Fonction pour comparer deux listes de factures et calculer les différences ---
+def comparer_factures(reader_old, reader_new):
+    # Construire sets de numéros de facture pour comparaison
+    def extract_facture_nums(reader):
+        nums = set()
+        for row in reader:
+            numero_facture = None
+            for key in row.keys():
+                if "facture" in key.lower():
+                    numero_facture = row.get(key)
+                    break
+            if numero_facture:
+                nums.add(numero_facture.strip())
+        return nums
+
+    old_nums = extract_facture_nums(reader_old) if reader_old else set()
+    new_nums = extract_facture_nums(reader_new) if reader_new else set()
+
+    nouvelles_factures = new_nums - old_nums
+    factures_supprimees = old_nums - new_nums
+    # Factures payées entre deux listes : on peut supposer qu'une facture présente dans l'ancien et absente dans le nouveau est payée
+    factures_payees = factures_supprimees
+
+    return {
+        "nouvelles": len(nouvelles_factures),
+        "payees": len(factures_payees)
+    }
+# --- FIN NOUVEAU ---
+
 if uploaded_file:
-    # Sauvegarde du fichier uploadé dans dossier commun ville
+    # Sauvegarde du fichier uploadé dans dossier commun magasin
     now_str = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"{now_str}_{uploaded_file.name}"
     file_path = GROUP_FOLDER / filename
@@ -117,146 +181,206 @@ if uploaded_file:
     with open(uploads_file, "w", encoding="utf-8") as f:
         json.dump(uploads, f, ensure_ascii=False, indent=2)
 
-    # Lecture du CSV uploadé pour affichage et traitement
-    toutes_lignes = []
-    for line in uploaded_file:
-        line = line.decode("ISO-8859-1").strip()
-        if "total" in line.lower():
-            break
-        toutes_lignes.append(line)
+    # --- NOUVEAU : Comparaison avec la dernière liste avant upload ---
+    if len(uploads) > 1:
+        # Charger le CSV précédent
+        previous_file_path = GROUP_FOLDER / uploads[-2]["filename"]
+        reader_old = lire_csv_depuis_fichier(previous_file_path)
+        # Charger le CSV nouvellement uploadé (depuis le disque)
+        reader_new = lire_csv_depuis_fichier(file_path)
 
-    idx_entete = next((i for i, l in enumerate(toutes_lignes) if "facture" in l.lower()), None)
-    if idx_entete is None:
-        st.error("❌ En-tête introuvable dans le CSV.")
+        if reader_old is not None and reader_new is not None:
+            diffs = comparer_factures(reader_old, reader_new)
+            st.info(f"📊 Différences avec la liste précédente : +{diffs['nouvelles']} nouvelles factures, {diffs['payees']} factures payées")
+    # --- FIN NOUVEAU ---
+
+    # On force l’affichage sur ce nouveau fichier uploadé
+    selected_filename = filename
+
+# --- Chargement du fichier CSV sélectionné (historique ou upload récent) ---
+if selected_filename:
+    csv_path = GROUP_FOLDER / selected_filename
+    reader = lire_csv_depuis_fichier(csv_path)
+    if reader is None:
+        st.error("Impossible de lire le fichier sélectionné.")
         st.stop()
-    lignes_utiles = toutes_lignes[idx_entete:]
-    reader = list(csv.DictReader(lignes_utiles, delimiter=";"))
+else:
+    st.info("Aucun fichier CSV sélectionné.")
+    st.stop()
 
-    # -- Traitement relances et affichage --
+# -- Traitement relances et affichage --
 
-    type_mapping = {
-        "TPSV": "secu",
-        "TPMV": "mutuelle",
-        "VIR": "client"
-    }
+type_mapping = {
+    "TPSV": "secu",
+    "TPMV": "mutuelle",
+    "VIR": "client"
+}
 
-    st.title(f"📋 Gestion des Relances - Utilisateur : {USER} | {VILLE.capitalize()}")
+st.title(f"📋 Gestion des Relances - Utilisateur : {USER} | {MAGASIN.capitalize()}")
 
-    types_disponibles = set()
-    for row in reader:
-        type_brut = row.get("Type", "").strip()
-        type_interprete = type_mapping.get(type_brut, type_brut)
-        if type_interprete:
-            types_disponibles.add(type_interprete)
-    types_disponibles = sorted(types_disponibles)
+types_disponibles = set()
+for row in reader:
+    type_brut = row.get("Type", "").strip()
+    type_interprete = type_mapping.get(type_brut, type_brut)
+    if type_interprete:
+        types_disponibles.add(type_interprete)
+types_disponibles = sorted(types_disponibles)
 
-    type_selection = st.multiselect("🔍 Filtrer par type", options=types_disponibles, default=types_disponibles)
-    filtrer_non_relances = st.checkbox("❗ Afficher uniquement les factures jamais relancées", value=False)
+type_selection = st.multiselect("🔍 Filtrer par type", options=types_disponibles, default=types_disponibles)
+filtrer_non_relances = st.checkbox("❗ Afficher uniquement les factures jamais relancées", value=False)
 
-    temporalites_disponibles = [
-        "Futur ✅",
-        "Ce mois 🟠",
-        "1-3 mois 🔴",
-        "> 3 mois 🟣"
-    ]
-    filtre_temporalites = st.multiselect(
-        "⏱️ Filtrer par date de facture",
-        options=temporalites_disponibles,
-        default=temporalites_disponibles
+temporalites_disponibles = [
+    "Futur ✅",
+    "Ce mois 🟠",
+    "1-3 mois 🔴",
+    "> 3 mois 🟣"
+]
+filtre_temporalites = st.multiselect(
+    "⏱️ Filtrer par date de facture",
+    options=temporalites_disponibles,
+    default=temporalites_disponibles
+)
+
+def get_couleur_et_emoji(date_str):
+    try:
+        facture_date = datetime.strptime(date_str, "%d/%m/%Y")
+        aujourd_hui = datetime.today()
+        delta = (aujourd_hui - facture_date).days
+
+        if facture_date > aujourd_hui:
+            return "✅", "VERT", "Futur ✅"
+        elif 0 <= delta <= 30:
+            return "🟠", "ORANGE", "Ce mois 🟠"
+        elif 30 < delta <= 90:
+            return "🔴", "ROUGE", "1-3 mois 🔴"
+        else:
+            return "🟣", "VIOLET", "> 3 mois 🟣"
+    except:
+        return "❓", "INCONNUE", "Inconnue"
+
+compteur = 0
+for row in reader:
+    numero_facture = None
+    for key in row.keys():
+        if "facture" in key.lower():
+            numero_facture = row.get(key)
+            break
+    if not numero_facture or not numero_facture.strip():
+        numero_facture = f"INCONNU_{compteur}"
+    else:
+        numero_facture = numero_facture.strip()
+
+    tp = row.get("TP", "").strip()
+    client = row.get("Client", "").strip()
+    type_brut = row.get("Type", "").strip()
+    type_interprete = type_mapping.get(type_brut, type_brut)
+    montant = row.get("Montant", "").strip()
+    date = row.get("Date", "").strip()
+    historique_relances = relances.get(numero_facture, [])
+
+    emoji, couleur, temporalite = get_couleur_et_emoji(date)
+
+    if type_interprete not in type_selection:
+        continue
+    if filtrer_non_relances and historique_relances:
+        continue
+    if temporalite not in filtre_temporalites:
+        continue
+
+    titre = f"{emoji} {date} — Facture {numero_facture} — {montant} €"
+
+    with st.expander(titre):
+        st.write(f"**Type :** {type_interprete}")
+        st.write(f"**Date :** {date}")
+        if tp:
+            st.write(f"**Tiers Payeur :** {tp}")
+        else:
+            st.write(f"**Client :** {client}")
+
+        if historique_relances:
+            st.markdown("### 🔁 Historique des relances")
+            for r in historique_relances:
+                st.markdown(f"**{r['date']} — {r['prenom']}**  \n💬 _{r['commentaire']}_")
+
+        with st.form(key=f"form_{numero_facture}_{compteur}"):
+            date_relance = st.text_input("📅 Nouvelle date de relance (jj/mm/aaaa)")
+            prenom = st.text_input("👤 Prénom")
+            commentaire = st.text_area("💬 Commentaire")
+            submit = st.form_submit_button("💾 Ajouter la relance")
+
+            if submit:
+                if not date_relance or not prenom or not commentaire:
+                    st.error("Tous les champs sont obligatoires.")
+                else:
+                    nouvelle_relance = {
+                        "date": date_relance,
+                        "prenom": prenom,
+                        "commentaire": commentaire
+                    }
+                    if numero_facture not in relances:
+                        relances[numero_facture] = []
+                    relances[numero_facture].append(nouvelle_relance)
+
+                    # Sauvegarde dans fichier JSON commun
+                    try:
+                        with open(fichier_relances, "w", encoding="utf-8") as f:
+                            json.dump(relances, f, ensure_ascii=False, indent=2)
+                        st.success("Relance ajoutée et sauvegardée !")
+                    except Exception as e:
+                        st.error(f"Erreur lors de la sauvegarde : {e}")
+
+    compteur += 1
+
+# Affichage historique uploads dans la sidebar (10 derniers)
+if uploads:
+    st.sidebar.markdown("### 📜 Historique uploads")
+    for up in reversed(uploads[-10:]):
+        st.sidebar.write(f"{up['datetime']} — {up['filename']}")
+
+
+import pandas as pd
+import plotly.express as px
+from datetime import datetime
+
+# Extraire les dates des factures valides et convertir en datetime
+dates = []
+for row in reader:
+    date_str = row.get("Date", "").strip()
+    try:
+        date_dt = datetime.strptime(date_str, "%d/%m/%Y")
+        dates.append(date_dt)
+    except:
+        pass  # ignorer dates invalides
+
+if dates:
+    df = pd.DataFrame({"date": dates})
+    # Option 1 : group by date précise
+    # compte factures par jour
+    df_count = df.groupby("date").size().reset_index(name="nombre_factures")
+
+    # Option 2 : group by mois pour un graphe plus lisible
+    df["mois"] = df["date"].dt.to_period("M").dt.to_timestamp()
+    df_count_month = df.groupby("mois").size().reset_index(name="nombre_factures")
+
+    st.markdown("## 📈 Étalement des factures dans le temps (par mois)")
+
+    fig = px.bar(
+        df_count_month,
+        x="mois",
+        y="nombre_factures",
+        labels={"mois": "Mois", "nombre_factures": "Nombre de factures"},
+        title="Nombre de factures par mois",
+        color_discrete_sequence=['gray']  # <-- barres uniformément grises
     )
 
-    def get_couleur_et_emoji(date_str):
-        try:
-            facture_date = datetime.strptime(date_str, "%d/%m/%Y")
-            aujourd_hui = datetime.today()
-            delta = (aujourd_hui - facture_date).days
+    fig.update_layout(
+        xaxis=dict(tickformat="%b %Y"),
+        yaxis=dict(title="Nombre de factures"),
+        coloraxis_showscale=False,
+        plot_bgcolor="white",
+        font=dict(size=14)
+    )
 
-            if facture_date > aujourd_hui:
-                return "✅", "VERT", "Futur ✅"
-            elif 0 <= delta <= 30:
-                return "🟠", "ORANGE", "Ce mois 🟠"
-            elif 30 < delta <= 90:
-                return "🔴", "ROUGE", "1-3 mois 🔴"
-            else:
-                return "🟣", "VIOLET", "> 3 mois 🟣"
-        except:
-            return "❓", "INCONNUE", "Inconnue"
-
-    compteur = 0
-    for row in reader:
-        numero_facture = None
-        for key in row.keys():
-            if "facture" in key.lower():
-                numero_facture = row.get(key)
-                break
-        if not numero_facture or not numero_facture.strip():
-            numero_facture = f"INCONNU_{compteur}"
-        else:
-            numero_facture = numero_facture.strip()
-
-        tp = row.get("TP", "").strip()
-        client = row.get("Client", "").strip()
-        type_brut = row.get("Type", "").strip()
-        type_interprete = type_mapping.get(type_brut, type_brut)
-        montant = row.get("Montant", "").strip()
-        date = row.get("Date", "").strip()
-        historique_relances = relances.get(numero_facture, [])
-
-        emoji, couleur, temporalite = get_couleur_et_emoji(date)
-
-        if type_interprete not in type_selection:
-            continue
-        if filtrer_non_relances and historique_relances:
-            continue
-        if temporalite not in filtre_temporalites:
-            continue
-
-        titre = f"{emoji} {date} — Facture {numero_facture} — {montant} €"
-
-        with st.expander(titre):
-            st.write(f"**Type :** {type_interprete}")
-            st.write(f"**Date :** {date}")
-            if tp:
-                st.write(f"**Tiers Payeur :** {tp}")
-            else:
-                st.write(f"**Client :** {client}")
-
-            if historique_relances:
-                st.markdown("### 🔁 Historique des relances")
-                for r in historique_relances:
-                    st.markdown(f"**{r['date']} — {r['prenom']}**  \n💬 _{r['commentaire']}_")
-
-            with st.form(key=f"form_{numero_facture}_{compteur}"):
-                date_relance = st.text_input("📅 Nouvelle date de relance (jj/mm/aaaa)")
-                prenom = st.text_input("👤 Prénom")
-                commentaire = st.text_area("💬 Commentaire")
-                submit = st.form_submit_button("💾 Ajouter la relance")
-
-                if submit:
-                    if not date_relance or not prenom or not commentaire:
-                        st.error("Tous les champs sont obligatoires.")
-                    else:
-                        nouvelle_relance = {
-                            "date": date_relance,
-                            "prenom": prenom,
-                            "commentaire": commentaire
-                        }
-                        if numero_facture not in relances:
-                            relances[numero_facture] = []
-                        relances[numero_facture].append(nouvelle_relance)
-
-                        # Sauvegarde dans fichier JSON commun
-                        try:
-                            with open(fichier_relances, "w", encoding="utf-8") as f:
-                                json.dump(relances, f, ensure_ascii=False, indent=2)
-                            st.success("Relance ajoutée et sauvegardée !")
-                        except Exception as e:
-                            st.error(f"Erreur lors de la sauvegarde : {e}")
-
-        compteur += 1
-
-# Affichage historique uploads
-if uploads:
-    st.sidebar.markdown("### 📂 Historique des fichiers uploadés")
-    for up in reversed(uploads[-10:]):  # afficher les 10 derniers
-        st.sidebar.write(f"- {up['datetime']} : {up['filename']}")
+    st.plotly_chart(fig, use_container_width=True)
+else:
+    st.info("Aucune date valide trouvée dans les factures pour générer le graphique.")
