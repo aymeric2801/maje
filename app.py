@@ -33,7 +33,8 @@ def hash_password(password):
 
 users = load_users()
 
-st.sidebar.title("🔐 Connexion")
+st.sidebar.title("Connexion")
+st.sidebar.info("Pour toute demande d'identifiant, merci de contacter le support à l'adresse support@maje-solutions.com.")
 
 if "username" not in st.session_state:
     st.session_state.username = None
