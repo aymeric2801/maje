@@ -64,13 +64,14 @@ if st.session_state.username is None:
     st.stop()
 
 USER = st.session_state.username
+VILLE = users[USER]["ville"].lower()
 
-# -- Dossiers utilisateur --
-USER_FOLDER = Path("users") / USER
-USER_FOLDER.mkdir(parents=True, exist_ok=True)
+# -- Dossier commun au groupe (ville) --
+GROUP_FOLDER = Path("users") / VILLE
+GROUP_FOLDER.mkdir(parents=True, exist_ok=True)
 
-# -- Gestion des relances spécifiques à l'utilisateur --
-fichier_relances = USER_FOLDER / "relances.json"
+# -- Gestion des relances partagées au niveau de la ville --
+fichier_relances = GROUP_FOLDER / "relances.json"
 relances = {}
 if fichier_relances.exists():
     try:
@@ -85,12 +86,12 @@ if fichier_relances.exists():
                         relances[facture] = [data]
                     else:
                         relances[facture] = []
-                st.info(f"🔄 Relances chargées pour {USER}.")
+                st.info(f"🔄 Relances chargées pour la ville : {VILLE}.")
     except json.JSONDecodeError:
         st.warning("⚠️ Fichier relances.json invalide, il sera écrasé à la prochaine sauvegarde.")
 
-# -- Gestion historique uploads utilisateur --
-uploads_file = USER_FOLDER / "uploads.json"
+# -- Gestion historique uploads partagés (ville) --
+uploads_file = GROUP_FOLDER / "uploads.json"
 uploads = []
 if uploads_file.exists():
     try:
@@ -103,15 +104,15 @@ if uploads_file.exists():
 uploaded_file = st.file_uploader("📤 Dépose ton fichier CSV ici", type="csv")
 
 if uploaded_file:
-    # Sauvegarde du fichier uploadé dans dossier utilisateur
+    # Sauvegarde du fichier uploadé dans dossier commun ville
     now_str = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"{now_str}_{uploaded_file.name}"
-    file_path = USER_FOLDER / filename
+    file_path = GROUP_FOLDER / filename
     with open(file_path, "wb") as f:
         f.write(uploaded_file.getvalue())
     st.success(f"Fichier sauvegardé : {filename}")
 
-    # Mise à jour historique uploads
+    # Mise à jour historique uploads commun
     uploads.append({"filename": filename, "datetime": now_str})
     with open(uploads_file, "w", encoding="utf-8") as f:
         json.dump(uploads, f, ensure_ascii=False, indent=2)
@@ -139,7 +140,7 @@ if uploaded_file:
         "VIR": "client"
     }
 
-    st.title(f"📋 Gestion des Relances - Utilisateur : {USER}")
+    st.title(f"📋 Gestion des Relances - Utilisateur : {USER} | {VILLE.capitalize()}")
 
     types_disponibles = set()
     for row in reader:
@@ -230,27 +231,32 @@ if uploaded_file:
                 prenom = st.text_input("👤 Prénom")
                 commentaire = st.text_area("💬 Commentaire")
                 submit = st.form_submit_button("💾 Ajouter la relance")
-                if submit and date_relance and prenom:
-                    nouvelle = {
-                        "date": date_relance,
-                        "prenom": prenom,
-                        "commentaire": commentaire
-                    }
-                    relances[numero_facture] = historique_relances + [nouvelle]
-                    st.success("✅ Relance ajoutée.")
-                    # Sauvegarde automatique des relances utilisateur
-                    with open(fichier_relances, "w", encoding="utf-8") as f:
-                        json.dump(relances, f, ensure_ascii=False, indent=2)
+
+                if submit:
+                    if not date_relance or not prenom or not commentaire:
+                        st.error("Tous les champs sont obligatoires.")
+                    else:
+                        nouvelle_relance = {
+                            "date": date_relance,
+                            "prenom": prenom,
+                            "commentaire": commentaire
+                        }
+                        if numero_facture not in relances:
+                            relances[numero_facture] = []
+                        relances[numero_facture].append(nouvelle_relance)
+
+                        # Sauvegarde dans fichier JSON commun
+                        try:
+                            with open(fichier_relances, "w", encoding="utf-8") as f:
+                                json.dump(relances, f, ensure_ascii=False, indent=2)
+                            st.success("Relance ajoutée et sauvegardée !")
+                        except Exception as e:
+                            st.error(f"Erreur lors de la sauvegarde : {e}")
 
         compteur += 1
 
-    # Affichage historique fichiers uploadés
+# Affichage historique uploads
+if uploads:
     st.sidebar.markdown("### 📂 Historique des fichiers uploadés")
-    if uploads:
-        for u in reversed(uploads[-10:]):
-            st.sidebar.write(f"{u['datetime']} — {u['filename']}")
-    else:
-        st.sidebar.write("Aucun fichier uploadé.")
-
-else:
-    st.info("📤 Dépose un fichier CSV pour commencer.")
+    for up in reversed(uploads[-10:]):  # afficher les 10 derniers
+        st.sidebar.write(f"- {up['datetime']} : {up['filename']}")

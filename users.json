@@ -1,11 +1,14 @@
 {
   "aymeric": {
-    "password_hash": "482c811da5d5b4bc6d497ffa98491e38"
+    "password_hash": "482c811da5d5b4bc6d497ffa98491e38",
+    "ville": "paris"
   },
   "chloe": {
-    "password_hash": "202cb962ac59075b964b07152d234b70"
+    "password_hash": "202cb962ac59075b964b07152d234b70",
+    "ville": "bordeaux"
   },
   "alex": {
-    "password_hash": "098f6bcd4621d373cade4e832627b4f6"
+    "password_hash": "098f6bcd4621d373cade4e832627b4f6",
+    "ville": "bordeaux"
   }
 }
