@@ -3,11 +3,9 @@
     "password_hash": "482c811da5d5b4bc6d497ffa98491e38"
   },
   "chloe": {
-    "username": "chloe",
-    "password_hash": "d7f99bc14d7c5e72cf97fc04eea5fe42"
+    "password_hash": "202cb962ac59075b964b07152d234b70"
   },
   "alex": {
-    "username": "alex",
-    "password_hash": "4b9902e3461f10fd472ebfd74247896b"
+    "password_hash": "098f6bcd4621d373cade4e832627b4f6"
   }
 }
