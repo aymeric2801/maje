@@ -153,7 +153,6 @@ def lire_csv_depuis_fichier(file_path):
 
 # --- NOUVEAU : Fonction pour comparer deux listes de factures et calculer les différences ---
 def comparer_factures(reader_old, reader_new):
-    # Construire sets de numéros de facture pour comparaison
     def extract_facture_nums(reader):
         nums = set()
         for row in reader:
@@ -171,12 +170,13 @@ def comparer_factures(reader_old, reader_new):
 
     nouvelles_factures = new_nums - old_nums
     factures_supprimees = old_nums - new_nums
-    # Factures payées entre deux listes : on peut supposer qu'une facture présente dans l'ancien et absente dans le nouveau est payée
     factures_payees = factures_supprimees
 
     return {
         "nouvelles": len(nouvelles_factures),
-        "payees": len(factures_payees)
+        "payees": len(factures_payees),
+        "liste_nouvelles": sorted(nouvelles_factures),
+        "liste_payees": sorted(factures_payees)
     }
 # --- FIN NOUVEAU ---
 
@@ -196,18 +196,27 @@ if uploaded_file:
 
     # --- NOUVEAU : Comparaison avec la dernière liste avant upload ---
     if len(uploads) > 1:
-        # Charger le CSV précédent
         previous_file_path = GROUP_FOLDER / uploads[-2]["filename"]
         reader_old = lire_csv_depuis_fichier(previous_file_path)
-        # Charger le CSV nouvellement uploadé (depuis le disque)
         reader_new = lire_csv_depuis_fichier(file_path)
 
         if reader_old is not None and reader_new is not None:
             diffs = comparer_factures(reader_old, reader_new)
+
             st.info(f"📊 Différences avec la liste précédente : +{diffs['nouvelles']} nouvelles factures, {diffs['payees']} factures payées")
+
+            if diffs["liste_nouvelles"]:
+                with st.expander("🆕 Voir les nouvelles factures"):
+                    for nf in diffs["liste_nouvelles"]:
+                        st.markdown(f"- **{nf}**")
+
+            if diffs["liste_payees"]:
+                with st.expander("✅ Voir les factures payées"):
+                    for pf in diffs["liste_payees"]:
+                        st.markdown(f"- ~~{pf}~~")
     # --- FIN NOUVEAU ---
 
-    # On force l’affichage sur ce nouveau fichier uploadé
+    # On force l'affichage sur ce nouveau fichier uploadé
     selected_filename = filename
 
 # --- Chargement du fichier CSV sélectionné (historique ou upload récent) ---
@@ -300,7 +309,11 @@ for row in reader:
     if temporalite not in filtre_temporalites:
         continue
 
-    titre = f"{emoji} {date} — Facture {numero_facture} — {montant} €"
+    # Dernière relance (si dispo)
+    derniere_relance = historique_relances[-1] if historique_relances else None
+    commentaire_relance = f"💬 _{derniere_relance['commentaire']}_ — **{derniere_relance['prenom']}**, {derniere_relance['date']}" if derniere_relance else "_Jamais relancée_"
+
+    titre = f"{emoji} {date} — Facture {numero_facture} — **{client}** — {montant} €\n\n{commentaire_relance}"
 
     with st.expander(titre):
         st.write(f"**Type :** {type_interprete}")
