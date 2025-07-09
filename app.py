@@ -6,6 +6,8 @@ from datetime import datetime
 import streamlit as st
 import os
 from PIL import Image
+import pandas as pd
+import plotly.express as px
 
 # 👉 Forcer le mode large
 st.set_page_config(layout="wide")
@@ -77,7 +79,6 @@ if "magasin" not in users[USER]:
     st.stop()
 
 MAGASIN = users[USER]["magasin"].lower()
-
 
 # -- Dossier commun au groupe (magasin) --
 GROUP_FOLDER = Path("users") / MAGASIN
@@ -156,6 +157,10 @@ def comparer_factures(reader_old, reader_new):
     def extract_facture_nums(reader):
         nums = set()
         for row in reader:
+            type_brut = row.get("Type", "").strip()
+            if type_brut == "CHQ-DIFF":  # Ignorer les CHQ-DIFF pour la comparaison
+                continue
+                
             numero_facture = None
             for key in row.keys():
                 if "facture" in key.lower():
@@ -243,6 +248,8 @@ st.title(f"Gestion des Relances - Utilisateur : {USER} | {MAGASIN.capitalize()}"
 types_disponibles = set()
 for row in reader:
     type_brut = row.get("Type", "").strip()
+    if type_brut == "CHQ-DIFF":  # Ignorer les CHQ-DIFF pour la liste des types
+        continue
     type_interprete = type_mapping.get(type_brut, type_brut)
     if type_interprete:
         types_disponibles.add(type_interprete)
@@ -282,6 +289,10 @@ def get_couleur_et_emoji(date_str):
 
 compteur = 0
 for row in reader:
+    type_brut = row.get("Type", "").strip()
+    if type_brut == "CHQ-DIFF":  # Ignorer complètement les factures CHQ-DIFF
+        continue
+        
     numero_facture = None
     for key in row.keys():
         if "facture" in key.lower():
@@ -294,7 +305,6 @@ for row in reader:
 
     tp = row.get("TP", "").strip()
     client = row.get("Client", "").strip()
-    type_brut = row.get("Type", "").strip()
     type_interprete = type_mapping.get(type_brut, type_brut)
     montant = row.get("Montant", "").strip()
     date = row.get("Date", "").strip()
@@ -363,14 +373,13 @@ if uploads:
     for up in reversed(uploads[-10:]):
         st.sidebar.write(f"{up['datetime']} — {up['filename']}")
 
-
-import pandas as pd
-import plotly.express as px
-from datetime import datetime
-
-# Extraire les dates des factures valides et convertir en datetime
+# Graphique des factures par mois
 dates = []
 for row in reader:
+    type_brut = row.get("Type", "").strip()
+    if type_brut == "CHQ-DIFF":  # Ne pas inclure les CHQ-DIFF dans le graphique
+        continue
+        
     date_str = row.get("Date", "").strip()
     try:
         date_dt = datetime.strptime(date_str, "%d/%m/%Y")
