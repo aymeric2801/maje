@@ -15,10 +15,10 @@ st.set_page_config(layout="wide")
 
 def get_profile_picture(username):
     # Chemin par défaut
-    default_path = "/Users/aymericneuvy/Desktop/maje/automatic.png"
+    default_path = "automatic.png"
     
     # Vérifier si l'utilisateur a une photo personnalisée
-    custom_path = f"/Users/aymericneuvy/Desktop/maje/users/acuitis langon/{username}.png"
+    custom_path = f"users/acuitis langon/{username}.png"
     if os.path.exists(custom_path):
         return custom_path
     else:
