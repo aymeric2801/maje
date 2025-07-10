@@ -24,11 +24,53 @@ def get_profile_picture(username):
     else:
         return default_path
 
-# Afficher le logo pingster en haut à droite
-col1, col2, col3 = st.columns([1,1,1])
-with col3:
-    pingster_logo = Image.open("pingster.png")
-    st.image(pingster_logo, width=1020)
+# -- Barre d'état en haut de page --
+def status_bar():
+    # Créer une ligne de colonnes pour la disposition
+    col1, col2, col3 = st.columns([1,1,1])
+    
+    # Afficher le logo pingster en haut à droite
+    with col3:
+        pingster_logo = Image.open("pingster.png")
+        st.image(pingster_logo, width=1020)
+    
+    # Afficher les infos utilisateur
+    if "username" in st.session_state and st.session_state.username:
+        profile_pic = get_profile_picture(st.session_state.username)
+        with col1:
+            st.markdown(f"""
+            <div style="background-color: #f0f2f6; padding: 15px; border-radius: 10px; margin-top: 10px; display: flex; align-items: center; gap: 15px;">
+                <img src="data:image/png;base64,{base64.b64encode(open(profile_pic, "rb").read()).decode()}" 
+                     style="width: 70px; height: 70px; border-radius: 50%; object-fit: cover;">
+                <div style="display: flex; flex-direction: column; gap: 5px;">
+                    <p style="margin: 0; font-weight: bold; font-size: 14px;">Connecté en tant que</p>
+                    <p style="margin: 0; color: #2e86c1; font-size: 18px; font-weight: 500;">{st.session_state.username}</p>
+                    <p style="margin: 0; font-size: 14px; color: #555;">{users[st.session_state.username]['magasin']}</p>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+    
+    # Afficher le dernier fichier chargé
+    if uploads:
+        last_upload = uploads[-1]
+        dt_str = last_upload.get("datetime", "")
+        if " à " in dt_str:
+            date_part, time_part = dt_str.split(" à ")
+            dt_obj = datetime.strptime(date_part + time_part, "%Y%m%d%H%M%S")
+            formatted_date = dt_obj.strftime("%d/%m/%Y à %H:%M")
+        else:
+            formatted_date = dt_str
+        
+        last_upload_user = last_upload.get("user", "N/A")
+        
+        with col2:
+            st.markdown(f"""
+            <div style="background-color: #f0f2f6; padding: 15px; border-radius: 10px; margin-top: 10px;">
+                <p style="margin: 0; font-weight: bold; font-size: 14px;">Dernier fichier chargé</p>
+                <p style="margin: 0; color: #2e86c1; font-size: 16px; font-weight: 500;">Par {last_upload_user}</p>
+                <p style="margin: 0; font-size: 14px; color: #555;">{formatted_date}</p>
+            </div>
+            """, unsafe_allow_html=True)
 
 # Afficher le logo principal en sidebar (en haut à gauche)
 logo = Image.open("logo.jpg")
@@ -79,20 +121,6 @@ if st.session_state.username is None:
             else:
                 st.sidebar.error("Mot de passe incorrect.")
 else:
-    profile_pic = get_profile_picture(st.session_state.username)
-    with col1:
-        st.markdown(f"""
-        <div style="background-color: #f0f2f6; padding: 15px; border-radius: 10px; margin-top: 10px; display: flex; align-items: center; gap: 15px;">
-            <img src="data:image/png;base64,{base64.b64encode(open(profile_pic, "rb").read()).decode()}" 
-                 style="width: 70px; height: 70px; border-radius: 50%; object-fit: cover;">
-            <div style="display: flex; flex-direction: column; gap: 5px;">
-                <p style="margin: 0; font-weight: bold; font-size: 14px;">Connecté en tant que</p>
-                <p style="margin: 0; color: #2e86c1; font-size: 18px; font-weight: 500;">{st.session_state.username}</p>
-                <p style="margin: 0; font-size: 14px; color: #555;">{users[st.session_state.username]['magasin']}</p>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-    
     if st.sidebar.button("Se déconnecter"):
         st.session_state.clear()  # Reset complet de la session
         st.rerun()
@@ -144,27 +172,8 @@ if uploads_file.exists():
     except:
         uploads = []
 
-# Afficher le dernier upload
-if uploads:
-    last_upload = uploads[-1]
-    # Extraire les parties de la date
-    dt_str = last_upload.get("datetime", "")
-    if " à " in dt_str:
-        date_part, time_part = dt_str.split(" à ")
-        # Convertir en datetime
-        dt_obj = datetime.strptime(date_part + time_part, "%Y%m%d%H%M%S")
-        # Formater selon le nouveau format
-        formatted_date = dt_obj.strftime("%d/%m/%Y à %H:%M")
-    else:
-        formatted_date = dt_str  # Fallback si le format n'est pas reconnu
-    
-    last_upload_user = last_upload.get("user", "N/A")
-    
-    st.markdown(f"""
-    <div style="margin: 20px 0 30px 0;">
-        Dernière liste ajoutée par <strong>{last_upload_user}</strong> le {formatted_date}
-    </div>
-    """, unsafe_allow_html=True)
+# Afficher la barre d'état
+status_bar()
 
 # --- Sélection du fichier uploadé à afficher ---
 st.sidebar.markdown("<h3 style='color: #5872fb;'>Sélection de la liste à afficher</h3>", unsafe_allow_html=True)
@@ -320,20 +329,34 @@ for row in reader:
         types_disponibles.add(type_interprete)
 types_disponibles = sorted(types_disponibles)
 
-type_selection = st.multiselect("🔍 Filtrer par type", options=types_disponibles, default=types_disponibles)
-filtrer_non_relances = st.checkbox("Afficher uniquement les factures jamais relancées", value=False)
-
-temporalites_disponibles = [
-    "Futur ✅",
-    "Ce mois 🟠",
-    "1-3 mois 🔴",
-    "> 3 mois 🟣"
-]
-filtre_temporalites = st.multiselect(
-    "⏱️ Filtrer par date de facture",
-    options=temporalites_disponibles,
-    default=temporalites_disponibles
-)
+# Mettre les filtres dans un expander
+with st.expander("🔍 Filtres", expanded=True):
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        type_selection = st.multiselect(
+            "Type de facture", 
+            options=types_disponibles, 
+            default=types_disponibles
+        )
+        
+        temporalites_disponibles = [
+            "Futur ✅",
+            "Ce mois 🟠",
+            "1-3 mois 🔴",
+            "> 3 mois 🟣"
+        ]
+        filtre_temporalites = st.multiselect(
+            "Date de facture",
+            options=temporalites_disponibles,
+            default=temporalites_disponibles
+        )
+    
+    with col2:
+        filtrer_non_relances = st.checkbox(
+            "Afficher uniquement les factures jamais relancées", 
+            value=False
+        )
 
 def get_couleur_et_emoji(date_str):
     try:
