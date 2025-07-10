@@ -330,7 +330,7 @@ for row in reader:
 types_disponibles = sorted(types_disponibles)
 
 # Mettre les filtres dans un expander
-with st.expander("🔍 Filtres", expanded=True):
+with st.expander("🔍 Filtres", expanded=False):
     col1, col2 = st.columns(2)
     
     with col1:
