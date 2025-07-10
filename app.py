@@ -73,7 +73,7 @@ def status_bar():
             """, unsafe_allow_html=True)
 
 # Afficher le logo principal en sidebar (en haut à gauche)
-logo = Image.open("logo.jpg")
+logo = Image.open("logo.png")
 st.sidebar.image(logo, width=620)
 
 # -- Gestion utilisateurs avec mot de passe hashé --
