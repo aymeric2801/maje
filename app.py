@@ -135,7 +135,7 @@ if uploads:
     
     st.markdown(f"""
     <div style="margin: 20px 0 30px 0;">
-        📋 Dernière liste ajoutée par <strong>{last_upload_user}</strong> le {last_upload_time}
+        Dernière liste ajoutée par <strong>{last_upload_user}</strong> le {last_upload_time}
     </div>
     """, unsafe_allow_html=True)
 
@@ -262,12 +262,12 @@ else:
 # -- Traitement relances et affichage --
 
 type_mapping = {
-    "TPSV": "secu",
-    "TPMV": "mutuelle",
-    "VIR": "client"
+    "TPSV": "Securite Sociale",
+    "TPMV": "Mutuelle",
+    "VIR": "Client"
 }
 
-st.title("📋 Liste des factures")
+st.title("LISTE DES FACTURES")
 
 types_disponibles = set()
 for row in reader:
@@ -280,7 +280,7 @@ for row in reader:
 types_disponibles = sorted(types_disponibles)
 
 type_selection = st.multiselect("🔍 Filtrer par type", options=types_disponibles, default=types_disponibles)
-filtrer_non_relances = st.checkbox("❗ Afficher uniquement les factures jamais relancées", value=False)
+filtrer_non_relances = st.checkbox("Afficher uniquement les factures jamais relancées", value=False)
 
 temporalites_disponibles = [
     "Futur ✅",
@@ -392,7 +392,7 @@ for row in reader:
 
 # Affichage historique uploads dans la sidebar
 if uploads:
-    st.sidebar.markdown("### 📜 Historique uploads")
+    st.sidebar.markdown("### Historique uploads")
     for up in reversed(uploads[-10:]):
         st.sidebar.write(f"{up['datetime']} — {up['filename']} — {up.get('user', 'N/A')}")
 
