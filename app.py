@@ -2,13 +2,14 @@ import csv
 import json
 import hashlib
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 import streamlit as st
 import os
 from PIL import Image
 import pandas as pd
 import plotly.express as px
 import base64
+
 
 # 👉 Forcer le mode large
 st.set_page_config(layout="wide")
@@ -221,7 +222,7 @@ st.markdown("""
 # -- Onglets principaux --
 st.session_state.current_tab = st.sidebar.radio(
     "Navigation",
-    ["Relance Facture", "Relance Devis"],
+    [ "Tableau de Bord", "Relance Devis", "Relance Facture"],  # Ajout du nouvel onglet
     index=0,
     label_visibility="collapsed"
 )
@@ -708,3 +709,336 @@ elif st.session_state.current_tab == "Relance Devis":
                                 json.dump(devis, f, ensure_ascii=False, indent=2)
                             st.success("Relance ajoutée avec succès !")
                             st.rerun()
+
+# --- Nouvel Onglet Tableau de Bord ---
+elif st.session_state.current_tab == "Tableau de Bord":
+    st.markdown("<h1 style='color: #5872fb;'>TABLEAU DE BORD</h1>", unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)  # Espace ajouté ici
+    
+    # Dictionnaire de mapping des types
+    type_mapping = {
+        "TPSV": "Securite Sociale",
+        "TPMV": "Mutuelle",
+        "VIR": "Client"
+    }
+    
+    # Charger le dernier fichier uploadé pour les factures impayées
+    dernier_fichier = uploads[-1]["filename"] if uploads else None
+    
+    # Charger les données des factures si disponible
+    if dernier_fichier:
+        csv_path = GROUP_FOLDER / dernier_fichier
+        try:
+            with open(csv_path, encoding="ISO-8859-1") as f:
+                toutes_lignes = []
+                for line in f:
+                    line = line.strip()
+                    if "total" in line.lower():
+                        break
+                    toutes_lignes.append(line)
+            
+            idx_entete = next((i for i, l in enumerate(toutes_lignes) if "facture" in l.lower()), None)
+            if idx_entete is None:
+                st.error("En-tête introuvable dans le CSV.")
+                reader = None
+            else:
+                lignes_utiles = toutes_lignes[idx_entete:]
+                reader = list(csv.DictReader(lignes_utiles, delimiter=";"))
+        except Exception as e:
+            st.error(f"Erreur lecture fichier CSV : {e}")
+            reader = None
+    else:
+        reader = None
+        st.warning("Aucun fichier de facture n'a été uploadé.")
+    
+    if reader:
+        # Calcul des factures impayées
+        factures_impayees = []
+        montant_total = 0
+        repartition = {"Client": 0, "Mutuelle": 0, "Securite Sociale": 0, "Autre": 0}
+        anciennetes = {"< 30j": 0, "30-90j": 0, "> 90j": 0, "Futur": 0}
+        
+        for row in reader:
+            type_brut = row.get("Type", "").strip()
+            if type_brut == "CHQ-DIFF":
+                continue
+                
+            # Récupérer les infos de la facture
+            numero_facture = None
+            for key in row.keys():
+                if "facture" in key.lower():
+                    numero_facture = row.get(key)
+                    break
+            if not numero_facture:
+                continue
+                
+            type_interprete = type_mapping.get(type_brut, "Autre")
+            montant_str = row.get("Montant", "0").replace(",", ".").strip()
+            try:
+                montant = float(montant_str)
+            except:
+                montant = 0
+                
+            date_str = row.get("Date", "")
+            try:
+                date_facture = datetime.strptime(date_str, "%d/%m/%Y")
+                delta = (datetime.now() - date_facture).days
+                
+                if date_facture > datetime.now():
+                    anciennete = "Futur"
+                elif delta <= 30:
+                    anciennete = "< 30j"
+                elif 30 < delta <= 90:
+                    anciennete = "30-90j"
+                else:
+                    anciennete = "> 90j"
+            except:
+                anciennete = "Inconnue"
+            
+            factures_impayees.append({
+                "numero": numero_facture,
+                "type": type_interprete,
+                "montant": montant,
+                "date": date_str,
+                "anciennete": anciennete,
+                "client": row.get("Client", "")
+            })
+            
+            montant_total += montant
+            repartition[type_interprete] = repartition.get(type_interprete, 0) + montant
+            if anciennete in anciennetes:
+                anciennetes[anciennete] += montant
+        
+        # Afficher les KPI
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("""
+            <div style="background-color: #f0f2f6; padding: 20px; border-radius: 10px; text-align: center;">
+                <h3 style="color: #5872fb; margin-top: 0;">Factures impayées</h3>
+                <p style="font-size: 24px; font-weight: bold; margin-bottom: 0;">{}</p>
+            </div>
+            """.format(len(factures_impayees)), unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown("""
+            <div style="background-color: #f0f2f6; padding: 20px; border-radius: 10px; text-align: center;">
+                <h3 style="color: #5872fb; margin-top: 0;">Montant total dû</h3>
+                <p style="font-size: 24px; font-weight: bold; margin-bottom: 0;">{:.2f} €</p>
+            </div>
+            """.format(montant_total), unsafe_allow_html=True)
+        
+        with col3:
+            relance_count = sum(len(v) for v in relances.values())
+            st.markdown("""
+            <div style="background-color: #f0f2f6; padding: 20px; border-radius: 10px; text-align: center;">
+                <h3 style="color: #5872fb; margin-top: 0;">Relances facture</h3>
+                <p style="font-size: 24px; font-weight: bold; margin-bottom: 0;">{}</p>
+            </div>
+            """.format(relance_count), unsafe_allow_html=True)
+        
+        # Graphiques
+        st.markdown("<br>", unsafe_allow_html=True)  # Espace ajouté ici avant le titre
+        st.markdown("### Répartition par type")
+        df_repartition = pd.DataFrame({
+            "Type": list(repartition.keys()),
+            "Montant": list(repartition.values())
+        })
+        
+        fig_repartition = px.pie(
+            df_repartition,
+            names="Type",
+            values="Montant",
+            color_discrete_sequence=['#5872fb', '#8a9eff', '#c0c9ff', '#e0e4ff'],
+            hole=0.4
+        )
+        fig_repartition.update_traces(
+            textposition='inside',
+            textinfo='percent+label',
+            textfont_size=14
+        )
+        fig_repartition.update_layout(
+            showlegend=False,
+            margin=dict(l=20, r=20, t=30, b=20)
+        )
+        
+        st.plotly_chart(fig_repartition, use_container_width=True)
+        
+        st.markdown("### Ancienneté des factures impayées")
+        df_anciennete = pd.DataFrame({
+            "Ancienneté": list(anciennetes.keys()),
+            "Montant": list(anciennetes.values())
+        })
+        
+        fig_anciennete = px.bar(
+            df_anciennete,
+            x="Ancienneté",
+            y="Montant",
+            color_discrete_sequence=['#5872fb']*4,
+            text="Montant"
+        )
+        fig_anciennete.update_traces(
+            texttemplate='%{y:.2f} €',
+            textposition='outside',
+            marker_line_width=0,
+            marker_color='#5872fb'
+        )
+        fig_anciennete.update_layout(
+            showlegend=False,
+            xaxis_title=None,
+            yaxis_title="Montant (€)",
+            uniformtext_minsize=12,
+            plot_bgcolor="white"
+        )
+        
+        st.plotly_chart(fig_anciennete, use_container_width=True)
+    
+    # --- Paramètres du tableau de bord ---
+    with st.expander("🔍 Paramètres du tableau de bord", expanded=True):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            periode_options = {
+                "Ce mois": 30,
+                "3 derniers mois": 90,
+                "6 derniers mois": 180,
+                "Cette année": 365,
+                "Toutes les données": None
+            }
+            selected_periode = st.selectbox(
+                "Période d'analyse",
+                options=list(periode_options.keys()),
+                index=0
+            )
+            jours_retour = periode_options[selected_periode]
+        
+        with col2:
+            type_relance = st.radio(
+                "Type de relance à analyser",
+                options=["Factures", "Devis", "Les deux"],
+                index=2
+            )
+    
+    # --- Section Classement des relances ---
+    st.markdown("## Classement des relances")
+    
+    # Charger toutes les données de relances
+    def charger_relances_factures():
+        relances_factures = []
+        if fichier_relances.exists():
+            try:
+                with open(fichier_relances, encoding="utf-8") as f:
+                    contenu = f.read().strip()
+                    if contenu:
+                        raw = json.loads(contenu)
+                        for facture, relances_list in raw.items():
+                            for relance in relances_list:
+                                relance["type"] = "Facture"
+                                relances_factures.append(relance)
+            except json.JSONDecodeError:
+                pass
+        return relances_factures
+    
+    def charger_relances_devis():
+        relances_devis = []
+        if devis_file.exists():
+            try:
+                with open(devis_file, encoding="utf-8") as f:
+                    devis_data = json.load(f)
+                    for devis in devis_data:
+                        for relance in devis.get("relances", []):
+                            relance["type"] = "Devis"
+                            relances_devis.append(relance)
+            except:
+                pass
+        return relances_devis
+    
+    # Fusionner les relances selon la sélection
+    toutes_relances = []
+    
+    if type_relance in ["Factures", "Les deux"]:
+        toutes_relances.extend(charger_relances_factures())
+    
+    if type_relance in ["Devis", "Les deux"]:
+        toutes_relances.extend(charger_relances_devis())
+    
+    # Filtrer par période si nécessaire
+    if jours_retour is not None:
+        date_limite = datetime.now() - timedelta(days=jours_retour)
+        toutes_relances = [
+            r for r in toutes_relances 
+            if datetime.strptime(r["date"], "%d/%m/%Y") >= date_limite
+        ]
+    
+    # Récupérer tous les utilisateurs du magasin
+    tous_utilisateurs = [user for user, data in users.items() if data.get("magasin", "").lower() == MAGASIN]
+    
+    # Compter les relances par utilisateur
+    comptage_relances = {user: 0 for user in tous_utilisateurs}
+    for relance in toutes_relances:
+        utilisateur = relance["prenom"]
+        if utilisateur in comptage_relances:
+            comptage_relances[utilisateur] += 1
+    
+    # Créer le dataframe trié
+    df = pd.DataFrame({
+        "Utilisateur": list(comptage_relances.keys()),
+        "Relances": list(comptage_relances.values())
+    }).sort_values("Relances", ascending=True)
+    
+    # Layout avec tableau à gauche et graphique à droite
+    col_table, col_graph = st.columns([1, 1])
+    
+    with col_table:
+        # Style pour le tableau
+        styled_df = df.sort_values("Relances", ascending=False).style \
+            .apply(lambda x: ['color: #5872fb; font-weight: bold' for i in x], subset=['Relances']) \
+            .format({'Relances': '{:.0f}'}) \
+            .set_properties(**{
+                'text-align': 'left',
+                'font-size': '16px'
+            })
+        
+        st.dataframe(
+            styled_df,
+            use_container_width=True,
+            height=(len(df) + 1) * 35 + 3,
+            hide_index=True
+        )
+        
+        st.markdown(f"**Total relances:** {len(toutes_relances)}")
+    
+    with col_graph:
+        # Graphique horizontal avec couleur unique
+        fig = px.bar(
+            df,
+            x="Relances",
+            y="Utilisateur",
+            orientation='h',
+            color_discrete_sequence=['#5872fb'],
+            text="Relances",
+            height=max(400, 50 * len(df))
+        )
+        
+        # Personnalisation
+        fig.update_layout(
+            showlegend=False,
+            xaxis_title=None,
+            yaxis_title=None,
+            plot_bgcolor="white",
+            margin=dict(l=20, r=20, t=30, b=20),
+            yaxis={'categoryorder':'total ascending'},
+            uniformtext_minsize=12,
+            uniformtext_mode='hide'
+        )
+        
+        fig.update_traces(
+            texttemplate='%{x}',
+            textposition='outside',
+            textfont_size=14,
+            marker_color='#5872fb',
+            marker_line_color='#5872fb',
+            marker_line_width=1
+        )
+        
+        st.plotly_chart(fig, use_container_width=True, use_container_height=True)
