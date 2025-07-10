@@ -920,7 +920,6 @@ elif st.session_state.current_tab == "Tableau de Bord":
             )
     
     # --- Section Classement des relances ---
-    st.markdown("## Classement des relances")
     
     # Charger toutes les données de relances
     def charger_relances_factures():
