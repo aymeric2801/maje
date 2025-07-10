@@ -253,7 +253,7 @@ if st.session_state.current_tab == "Relance Facture":
         selected_filename = None
 
     # -- Upload du fichier CSV --
-    uploaded_file = st.file_uploader("📤 Dépose ton fichier CSV ici", type="csv")
+    uploaded_file = st.file_uploader("📤 Déposer un nouveau CSV Cosium", type="csv")
 
     def lire_csv_depuis_fichier(file_path):
         try:
@@ -486,17 +486,16 @@ if st.session_state.current_tab == "Relance Facture":
 
             with st.form(key=f"form_{numero_facture}_{compteur}"):
                 date_relance = st.date_input("📅 Nouvelle date de relance", datetime.today())
-                prenom = st.text_input("👤 Prénom")
                 commentaire = st.text_area("💬 Commentaire")
                 submit = st.form_submit_button("💾 Ajouter la relance")
 
                 if submit:
-                    if not prenom or not commentaire:
+                    if not commentaire:
                         st.error("Tous les champs sont obligatoires.")
                     else:
                         nouvelle_relance = {
                             "date": date_relance.strftime("%d/%m/%Y"),
-                            "prenom": prenom,
+                            "prenom": USER,
                             "commentaire": commentaire
                         }
                         if numero_facture not in relances:
@@ -679,7 +678,6 @@ elif st.session_state.current_tab == "Relance Devis":
                 # Formulaire pour ajouter une relance
                 with st.form(key=f"form_relance_devis_{idx}"):
                     date_relance = st.date_input("📅 Nouvelle date de relance", datetime.today(), key=f"date_relance_{idx}")
-                    prenom_relance = st.text_input("👤 Prénom", key=f"prenom_relance_{idx}")
                     commentaire_relance = st.text_area("💬 Commentaire", key=f"commentaire_relance_{idx}")
                     
                     col1, col2 = st.columns(2)
@@ -697,12 +695,12 @@ elif st.session_state.current_tab == "Relance Devis":
                             st.rerun()
                     
                     if submit_relance:
-                        if not prenom_relance or not commentaire_relance:
+                        if not commentaire_relance:
                             st.error("Tous les champs sont obligatoires.")
                         else:
                             nouvelle_relance = {
                                 "date": date_relance.strftime("%d/%m/%Y"),
-                                "prenom": prenom_relance,
+                                "prenom": USER,
                                 "commentaire": commentaire_relance
                             }
                             d["relances"].append(nouvelle_relance)

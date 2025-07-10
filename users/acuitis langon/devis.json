@@ -17,7 +17,18 @@
     "telephone": "uuu",
     "date_devis": "10/07/2025",
     "commentaire": "uuu",
-    "relances": [],
+    "relances": [
+      {
+        "date": "11/07/2025",
+        "prenom": "Jeremy",
+        "commentaire": "mail"
+      },
+      {
+        "date": "11/07/2025",
+        "prenom": "Baptiste",
+        "commentaire": "appel"
+      }
+    ],
     "date_creation": "10/07/2025 23:23",
     "createur": "Jeremy"
   }
