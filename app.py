@@ -984,9 +984,74 @@ elif st.session_state.current_tab == "Tableau de Bord":
     df = pd.DataFrame({
         "Utilisateur": list(comptage_relances.keys()),
         "Relances": list(comptage_relances.values())
-    }).sort_values("Relances", ascending=True)
+    }).sort_values("Relances", ascending=False)
+    
+    # --- Top 3 avec photos et couronnes ---
+    st.markdown("### 🏆 Top 3 des relanceurs")
+    
+    if len(df) > 0:
+        # Créer 3 colonnes pour le top 3
+        col1, col2, col3 = st.columns(3)
+        
+        # Fonction pour afficher un membre du podium
+        def display_podium_member(col, user, count, position, crown_color):
+            with col:
+                # Récupérer la photo de profil
+                profile_pic = get_profile_picture(user)
+                img_base64 = base64.b64encode(open(profile_pic, "rb").read()).decode()
+                
+                # Style CSS pour la carte
+                st.markdown(f"""
+                <div style="
+                    background-color: #f0f2f6;
+                    border-radius: 15px;
+                    padding: 20px;
+                    text-align: center;
+                    margin-bottom: 20px;
+                    position: relative;
+                    border: 2px solid {crown_color};
+                    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                ">
+                    <div style="
+                        position: absolute;
+                        top: -15px;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        font-size: 24px;
+                    ">
+                        {position}
+                    </div>
+                    <img src="data:image/png;base64,{img_base64}" 
+                         style="
+                             width: 100px;
+                             height: 100px;
+                             border-radius: 50%;
+                             object-fit: cover;
+                             border: 3px solid {crown_color};
+                             margin: 10px auto;
+                         ">
+                    <h3 style="color: #5872fb; margin: 10px 0 5px 0;">{user}</h3>
+                    <p style="font-size: 18px; font-weight: bold; margin: 0;">{count} relances</p>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        # Afficher le top 3
+        top3 = df.head(3)
+        
+        # 1ère place (or)
+        if len(top3) >= 1:
+            display_podium_member(col2, top3.iloc[0]["Utilisateur"], top3.iloc[0]["Relances"], "👑", "#FFD700")
+        
+        # 2ème place (argent)
+        if len(top3) >= 2:
+            display_podium_member(col1, top3.iloc[1]["Utilisateur"], top3.iloc[1]["Relances"], "🥈", "#C0C0C0")
+        
+        # 3ème place (bronze)
+        if len(top3) >= 3:
+            display_podium_member(col3, top3.iloc[2]["Utilisateur"], top3.iloc[2]["Relances"], "🥉", "#CD7F32")
     
     # Layout avec tableau à gauche et graphique à droite
+    st.markdown("### Détails du classement")
     col_table, col_graph = st.columns([1, 1])
     
     with col_table:
@@ -1010,6 +1075,7 @@ elif st.session_state.current_tab == "Tableau de Bord":
     
     with col_graph:
         # Graphique horizontal avec couleur unique
+            
         fig = px.bar(
             df,
             x="Relances",
@@ -1017,8 +1083,7 @@ elif st.session_state.current_tab == "Tableau de Bord":
             orientation='h',
             color_discrete_sequence=['#5872fb'],
             text="Relances",
-            height=max(400, 50 * len(df))
-        )
+            height=max(400, 50 * len(df)))
         
         # Personnalisation
         fig.update_layout(
@@ -1029,8 +1094,7 @@ elif st.session_state.current_tab == "Tableau de Bord":
             margin=dict(l=20, r=20, t=30, b=20),
             yaxis={'categoryorder':'total ascending'},
             uniformtext_minsize=12,
-            uniformtext_mode='hide'
-        )
+            uniformtext_mode='hide')
         
         fig.update_traces(
             texttemplate='%{x}',
@@ -1038,7 +1102,6 @@ elif st.session_state.current_tab == "Tableau de Bord":
             textfont_size=14,
             marker_color='#5872fb',
             marker_line_color='#5872fb',
-            marker_line_width=1
-        )
+            marker_line_width=1)
         
         st.plotly_chart(fig, use_container_width=True, use_container_height=True)
