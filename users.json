@@ -3,12 +3,12 @@
     "password_hash": "482c811da5d5b4bc6d497ffa98491e38",
     "magasin": "acuitis lormont"
   },
-  "chloe": {
+  "Gabrielle": {
     "password_hash": "202cb962ac59075b964b07152d234b70",
-    "magasin": "acuitis langon"
+    "magasin": "Acuitis Langon"
   },
-  "jeremy": {
+  "Jeremy": {
     "password_hash": "098f6bcd4621d373cade4e832627b4f6",
-    "magasin": "acuitis langon"
+    "magasin": "Acuitis Langon"
   }
 }

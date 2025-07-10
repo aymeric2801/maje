@@ -12,7 +12,13 @@ import plotly.express as px
 # 👉 Forcer le mode large
 st.set_page_config(layout="wide")
 
-# Afficher le logo en sidebar (en haut à gauche)
+# Afficher le logo pingster en haut à droite
+col1, col2, col3 = st.columns([1,1,1])
+with col3:
+    pingster_logo = Image.open("pingster.png")
+    st.image(pingster_logo, width=1020)
+
+# Afficher le logo principal en sidebar (en haut à gauche)
 logo = Image.open("logo.jpg")
 st.sidebar.image(logo, width=620)
 
@@ -48,20 +54,28 @@ if st.session_state.username is None:
     username_input = st.sidebar.text_input("Nom d'utilisateur")
     password_input = st.sidebar.text_input("Mot de passe", type="password")
     if st.sidebar.button("Se connecter"):
-        username_input = username_input.strip().lower()
+        username_input = username_input.strip()
         if not username_input:
             st.sidebar.error("Merci d'entrer un nom d'utilisateur.")
-        elif username_input not in users:
+        elif username_input.lower() not in [k.lower() for k in users.keys()]:
             st.sidebar.error("Utilisateur inconnu.")
         else:
-            # Vérifier mot de passe
-            if hash_password(password_input) == users[username_input]["password_hash"]:
-                st.session_state.username = username_input
+            exact_username = next(k for k in users.keys() if k.lower() == username_input.lower())
+            if hash_password(password_input) == users[exact_username]["password_hash"]:
+                st.session_state.username = exact_username
                 st.rerun()
             else:
                 st.sidebar.error("Mot de passe incorrect.")
 else:
-    st.sidebar.write(f"Connecté en tant que **{st.session_state.username}**")
+    with col1:
+        st.markdown(f"""
+        <div style="background-color: #f0f2f6; padding: 10px; border-radius: 10px; margin-top: 10px;">
+            <p style="margin: 0; font-weight: bold;">Connecté en tant que</p>
+            <p style="margin: 10px 0 0 0; color: #2e86c1; font-size: 1.1em;">{st.session_state.username}</p>
+            <p style="margin: 10px 0 0 0; font-size: 0.9em;">{users[st.session_state.username]['magasin']}</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
     if st.sidebar.button("Se déconnecter"):
         st.session_state.username = None
         st.rerun()
@@ -100,7 +114,6 @@ if fichier_relances.exists():
                         relances[facture] = [data]
                     else:
                         relances[facture] = []
-                st.info(f"🔄 Relances chargées pour le magasin : {MAGASIN}.")
     except json.JSONDecodeError:
         st.warning("⚠️ Fichier relances.json invalide, il sera écrasé à la prochaine sauvegarde.")
 
@@ -114,11 +127,22 @@ if uploads_file.exists():
     except:
         uploads = []
 
-# --- NOUVEAU : Sélection du fichier uploadé à afficher ---
+# Afficher le dernier upload
+if uploads:
+    last_upload = uploads[-1]
+    last_upload_time = last_upload.get("datetime", "").replace("_", " à ")
+    last_upload_user = last_upload.get("user", "N/A")
+    
+    st.markdown(f"""
+    <div style="margin: 20px 0 30px 0;">
+        📋 Dernière liste ajoutée par <strong>{last_upload_user}</strong> le {last_upload_time}
+    </div>
+    """, unsafe_allow_html=True)
+
+# --- Sélection du fichier uploadé à afficher ---
 st.sidebar.markdown("### 📂 Sélection de la liste à afficher")
 if uploads:
     filenames = [up["filename"] for up in uploads]
-    # sélection dans la sidebar, par défaut dernier fichier uploadé
     selected_filename = st.sidebar.selectbox(
         "Choisis une liste uploadée",
         options=filenames,
@@ -126,8 +150,6 @@ if uploads:
     )
 else:
     selected_filename = None
-
-# --- FIN NOUVEAU ---
 
 # -- Upload du fichier CSV --
 uploaded_file = st.file_uploader("📤 Dépose ton fichier CSV ici", type="csv")
@@ -152,13 +174,12 @@ def lire_csv_depuis_fichier(file_path):
         st.error(f"Erreur lecture fichier CSV : {e}")
         return None
 
-# --- NOUVEAU : Fonction pour comparer deux listes de factures et calculer les différences ---
 def comparer_factures(reader_old, reader_new):
-    def extract_facture_nums(reader):
-        nums = set()
+    def extract_facture_data(reader):
+        factures = {}
         for row in reader:
             type_brut = row.get("Type", "").strip()
-            if type_brut == "CHQ-DIFF":  # Ignorer les CHQ-DIFF pour la comparaison
+            if type_brut == "CHQ-DIFF":
                 continue
                 
             numero_facture = None
@@ -167,11 +188,16 @@ def comparer_factures(reader_old, reader_new):
                     numero_facture = row.get(key)
                     break
             if numero_facture:
-                nums.add(numero_facture.strip())
-        return nums
+                numero_facture = numero_facture.strip()
+                client = row.get("Client", "").strip()
+                factures[numero_facture] = client
+        return factures
 
-    old_nums = extract_facture_nums(reader_old) if reader_old else set()
-    new_nums = extract_facture_nums(reader_new) if reader_new else set()
+    old_data = extract_facture_data(reader_old) if reader_old else {}
+    new_data = extract_facture_data(reader_new) if reader_new else {}
+
+    old_nums = set(old_data.keys())
+    new_nums = set(new_data.keys())
 
     nouvelles_factures = new_nums - old_nums
     factures_supprimees = old_nums - new_nums
@@ -180,13 +206,11 @@ def comparer_factures(reader_old, reader_new):
     return {
         "nouvelles": len(nouvelles_factures),
         "payees": len(factures_payees),
-        "liste_nouvelles": sorted(nouvelles_factures),
-        "liste_payees": sorted(factures_payees)
+        "liste_nouvelles": [(nf, new_data[nf]) for nf in sorted(nouvelles_factures)],
+        "liste_payees": [(pf, old_data[pf]) for pf in sorted(factures_payees)]
     }
-# --- FIN NOUVEAU ---
 
 if uploaded_file:
-    # Sauvegarde du fichier uploadé dans dossier commun magasin
     now_str = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"{now_str}_{uploaded_file.name}"
     file_path = GROUP_FOLDER / filename
@@ -194,12 +218,14 @@ if uploaded_file:
         f.write(uploaded_file.getvalue())
     st.success(f"Fichier sauvegardé : {filename}")
 
-    # Mise à jour historique uploads commun
-    uploads.append({"filename": filename, "datetime": now_str})
+    uploads.append({
+        "filename": filename, 
+        "datetime": now_str.replace("_", " à "),
+        "user": USER
+    })
     with open(uploads_file, "w", encoding="utf-8") as f:
         json.dump(uploads, f, ensure_ascii=False, indent=2)
 
-    # --- NOUVEAU : Comparaison avec la dernière liste avant upload ---
     if len(uploads) > 1:
         previous_file_path = GROUP_FOLDER / uploads[-2]["filename"]
         reader_old = lire_csv_depuis_fichier(previous_file_path)
@@ -212,19 +238,17 @@ if uploaded_file:
 
             if diffs["liste_nouvelles"]:
                 with st.expander("🆕 Voir les nouvelles factures"):
-                    for nf in diffs["liste_nouvelles"]:
-                        st.markdown(f"- **{nf}**")
+                    for nf, client in diffs["liste_nouvelles"]:
+                        st.markdown(f"- **{nf}** — {client}")
 
             if diffs["liste_payees"]:
                 with st.expander("✅ Voir les factures payées"):
-                    for pf in diffs["liste_payees"]:
-                        st.markdown(f"- ~~{pf}~~")
-    # --- FIN NOUVEAU ---
+                    for pf, client in diffs["liste_payees"]:
+                        st.markdown(f"- ~~{pf}~~ — {client}")
 
-    # On force l'affichage sur ce nouveau fichier uploadé
     selected_filename = filename
 
-# --- Chargement du fichier CSV sélectionné (historique ou upload récent) ---
+# --- Chargement du fichier CSV sélectionné ---
 if selected_filename:
     csv_path = GROUP_FOLDER / selected_filename
     reader = lire_csv_depuis_fichier(csv_path)
@@ -243,12 +267,12 @@ type_mapping = {
     "VIR": "client"
 }
 
-st.title(f"Gestion des Relances - Utilisateur : {USER} | {MAGASIN.capitalize()}")
+st.title("📋 Liste des factures")
 
 types_disponibles = set()
 for row in reader:
     type_brut = row.get("Type", "").strip()
-    if type_brut == "CHQ-DIFF":  # Ignorer les CHQ-DIFF pour la liste des types
+    if type_brut == "CHQ-DIFF":
         continue
     type_interprete = type_mapping.get(type_brut, type_brut)
     if type_interprete:
@@ -290,7 +314,7 @@ def get_couleur_et_emoji(date_str):
 compteur = 0
 for row in reader:
     type_brut = row.get("Type", "").strip()
-    if type_brut == "CHQ-DIFF":  # Ignorer complètement les factures CHQ-DIFF
+    if type_brut == "CHQ-DIFF":
         continue
         
     numero_facture = None
@@ -319,7 +343,6 @@ for row in reader:
     if temporalite not in filtre_temporalites:
         continue
 
-    # Dernière relance (si dispo)
     derniere_relance = historique_relances[-1] if historique_relances else None
     commentaire_relance = f"💬 _{derniere_relance['commentaire']}_ — **{derniere_relance['prenom']}**, {derniere_relance['date']}" if derniere_relance else "_Jamais relancée_"
 
@@ -357,27 +380,27 @@ for row in reader:
                         relances[numero_facture] = []
                     relances[numero_facture].append(nouvelle_relance)
 
-                    # Sauvegarde dans fichier JSON commun
                     try:
                         with open(fichier_relances, "w", encoding="utf-8") as f:
                             json.dump(relances, f, ensure_ascii=False, indent=2)
                         st.success("Relance ajoutée et sauvegardée !")
+                        st.rerun()
                     except Exception as e:
                         st.error(f"Erreur lors de la sauvegarde : {e}")
 
     compteur += 1
 
-# Affichage historique uploads dans la sidebar (10 derniers)
+# Affichage historique uploads dans la sidebar
 if uploads:
     st.sidebar.markdown("### 📜 Historique uploads")
     for up in reversed(uploads[-10:]):
-        st.sidebar.write(f"{up['datetime']} — {up['filename']}")
+        st.sidebar.write(f"{up['datetime']} — {up['filename']} — {up.get('user', 'N/A')}")
 
 # Graphique des factures par mois
 dates = []
 for row in reader:
     type_brut = row.get("Type", "").strip()
-    if type_brut == "CHQ-DIFF":  # Ne pas inclure les CHQ-DIFF dans le graphique
+    if type_brut == "CHQ-DIFF":
         continue
         
     date_str = row.get("Date", "").strip()
@@ -385,15 +408,10 @@ for row in reader:
         date_dt = datetime.strptime(date_str, "%d/%m/%Y")
         dates.append(date_dt)
     except:
-        pass  # ignorer dates invalides
+        pass
 
 if dates:
     df = pd.DataFrame({"date": dates})
-    # Option 1 : group by date précise
-    # compte factures par jour
-    df_count = df.groupby("date").size().reset_index(name="nombre_factures")
-
-    # Option 2 : group by mois pour un graphe plus lisible
     df["mois"] = df["date"].dt.to_period("M").dt.to_timestamp()
     df_count_month = df.groupby("mois").size().reset_index(name="nombre_factures")
 
@@ -405,7 +423,7 @@ if dates:
         y="nombre_factures",
         labels={"mois": "Mois", "nombre_factures": "Nombre de factures"},
         title="Nombre de factures par mois",
-        color_discrete_sequence=['gray']  # <-- barres uniformément grises
+        color_discrete_sequence=['gray']
     )
 
     fig.update_layout(
