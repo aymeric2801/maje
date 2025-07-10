@@ -1,0 +1,24 @@
+[
+  {
+    "prenom": "Client",
+    "nom": "uuu",
+    "email": "uuu",
+    "telephone": "uuu",
+    "date_devis": "10/07/2025",
+    "commentaire": "uuu",
+    "relances": [],
+    "date_creation": "10/07/2025 23:23",
+    "createur": "Jeremy"
+  },
+  {
+    "prenom": "Client",
+    "nom": "aaaa",
+    "email": "uuu",
+    "telephone": "uuu",
+    "date_devis": "10/07/2025",
+    "commentaire": "uuu",
+    "relances": [],
+    "date_creation": "10/07/2025 23:23",
+    "createur": "Jeremy"
+  }
+]
