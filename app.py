@@ -8,9 +8,21 @@ import os
 from PIL import Image
 import pandas as pd
 import plotly.express as px
+import base64
 
 # 👉 Forcer le mode large
 st.set_page_config(layout="wide")
+
+def get_profile_picture(username):
+    # Chemin par défaut
+    default_path = "/Users/aymericneuvy/Desktop/maje/automatic.png"
+    
+    # Vérifier si l'utilisateur a une photo personnalisée
+    custom_path = f"/Users/aymericneuvy/Desktop/maje/users/acuitis langon/{username}.png"
+    if os.path.exists(custom_path):
+        return custom_path
+    else:
+        return default_path
 
 # Afficher le logo pingster en haut à droite
 col1, col2, col3 = st.columns([1,1,1])
@@ -44,7 +56,7 @@ def hash_password(password):
 
 users = load_users()
 
-st.sidebar.title("Connexion")
+st.sidebar.markdown("<h1 style='color: #5872fb;'>Connexion</h1>", unsafe_allow_html=True)
 st.sidebar.info("Pour toute demande d'identifiant, merci de contacter le support à l'adresse support@maje-solutions.com.")
 
 if "username" not in st.session_state:
@@ -67,12 +79,17 @@ if st.session_state.username is None:
             else:
                 st.sidebar.error("Mot de passe incorrect.")
 else:
+    profile_pic = get_profile_picture(st.session_state.username)
     with col1:
         st.markdown(f"""
-        <div style="background-color: #f0f2f6; padding: 10px; border-radius: 10px; margin-top: 10px;">
-            <p style="margin: 0; font-weight: bold;">Connecté en tant que</p>
-            <p style="margin: 10px 0 0 0; color: #2e86c1; font-size: 1.1em;">{st.session_state.username}</p>
-            <p style="margin: 10px 0 0 0; font-size: 0.9em;">{users[st.session_state.username]['magasin']}</p>
+        <div style="background-color: #f0f2f6; padding: 15px; border-radius: 10px; margin-top: 10px; display: flex; align-items: center; gap: 15px;">
+            <img src="data:image/png;base64,{base64.b64encode(open(profile_pic, "rb").read()).decode()}" 
+                 style="width: 70px; height: 70px; border-radius: 50%; object-fit: cover;">
+            <div style="display: flex; flex-direction: column; gap: 5px;">
+                <p style="margin: 0; font-weight: bold; font-size: 14px;">Connecté en tant que</p>
+                <p style="margin: 0; color: #2e86c1; font-size: 18px; font-weight: 500;">{st.session_state.username}</p>
+                <p style="margin: 0; font-size: 14px; color: #555;">{users[st.session_state.username]['magasin']}</p>
+            </div>
         </div>
         """, unsafe_allow_html=True)
     
@@ -150,7 +167,7 @@ if uploads:
     """, unsafe_allow_html=True)
 
 # --- Sélection du fichier uploadé à afficher ---
-st.sidebar.markdown("### 📂 Sélection de la liste à afficher")
+st.sidebar.markdown("<h3 style='color: #5872fb;'>Sélection de la liste à afficher</h3>", unsafe_allow_html=True)
 if uploads:
     # Créer des noms simplifiés pour l'affichage
     display_names = [f"Liste {i+1}" for i in range(len(uploads))]
@@ -223,7 +240,7 @@ def comparer_factures(reader_old, reader_new):
         "nouvelles": len(nouvelles_factures),
         "payees": len(factures_payees),
         "liste_nouvelles": [(nf, new_data[nf]) for nf in sorted(nouvelles_factures)],
-        "liste_payees": [(pf, old_data[pf]) for pf in sorted(factures_payees)]
+        "liste_payees": [(pf, old_data[pf]) for pf in sorted(factures_supprimees)]
     }
 
 if uploaded_file and "last_uploaded_name" not in st.session_state:
@@ -291,7 +308,7 @@ type_mapping = {
     "VIR": "Client"
 }
 
-st.title("LISTE DES FACTURES")
+st.markdown("<h1 style='color: #5872fb;'>LISTE DES FACTURES</h1>", unsafe_allow_html=True)
 
 types_disponibles = set()
 for row in reader:
