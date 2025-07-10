@@ -77,7 +77,7 @@ else:
         """, unsafe_allow_html=True)
     
     if st.sidebar.button("Se déconnecter"):
-        st.session_state.username = None
+        st.session_state.clear()  # Reset complet de la session
         st.rerun()
 
 if st.session_state.username is None:
@@ -152,12 +152,18 @@ if uploads:
 # --- Sélection du fichier uploadé à afficher ---
 st.sidebar.markdown("### 📂 Sélection de la liste à afficher")
 if uploads:
-    filenames = [up["filename"] for up in uploads]
-    selected_filename = st.sidebar.selectbox(
+    # Créer des noms simplifiés pour l'affichage
+    display_names = [f"Liste {i+1}" for i in range(len(uploads))]
+    # Garder une correspondance avec les noms réels
+    filename_mapping = {f"Liste {i+1}": up["filename"] for i, up in enumerate(uploads)}
+    
+    selected_display = st.sidebar.selectbox(
         "Choisis une liste uploadée",
-        options=filenames,
-        index=len(filenames)-1
+        options=display_names,
+        index=len(display_names)-1,
+        format_func=lambda x: x  # Affiche juste "Liste X"
     )
+    selected_filename = filename_mapping[selected_display]
 else:
     selected_filename = None
 
@@ -220,7 +226,7 @@ def comparer_factures(reader_old, reader_new):
         "liste_payees": [(pf, old_data[pf]) for pf in sorted(factures_payees)]
     }
 
-if uploaded_file:
+if uploaded_file and "last_uploaded_name" not in st.session_state:
     now_str = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"{now_str}_{uploaded_file.name}"
     file_path = GROUP_FOLDER / filename
@@ -228,13 +234,19 @@ if uploaded_file:
         f.write(uploaded_file.getvalue())
     st.success(f"Fichier sauvegardé : {filename}")
 
+    # Ajouter le numéro de liste
+    list_number = len(uploads) + 1
+    
     uploads.append({
         "filename": filename, 
         "datetime": now_str.replace("_", " à "),
-        "user": USER
+        "user": USER,
+        "list_number": list_number
     })
     with open(uploads_file, "w", encoding="utf-8") as f:
         json.dump(uploads, f, ensure_ascii=False, indent=2)
+
+    st.session_state["last_uploaded_name"] = filename  # Marque comme déjà uploadé
 
     if len(uploads) > 1:
         previous_file_path = GROUP_FOLDER / uploads[-2]["filename"]
@@ -257,6 +269,8 @@ if uploaded_file:
                         st.markdown(f"- ~~{pf}~~ — {client}")
 
     selected_filename = filename
+elif "last_uploaded_name" in st.session_state:
+    selected_filename = st.session_state["last_uploaded_name"]
 
 # --- Chargement du fichier CSV sélectionné ---
 if selected_filename:
@@ -402,9 +416,33 @@ for row in reader:
 
 # Affichage historique uploads dans la sidebar
 if uploads:
-    st.sidebar.markdown("### Historique uploads")
-    for up in reversed(uploads[-10:]):
-        st.sidebar.write(f"{up['datetime']} — {up['filename']} — {up.get('user', 'N/A')}")
+    st.sidebar.markdown("### Historique des listes")
+    
+    # Créer un dictionnaire pour compter les uploads par utilisateur
+    upload_counts = {}
+    for i, up in enumerate(reversed(uploads[-10:]), 1):
+        user = up.get('user', 'N/A')
+        if user not in upload_counts:
+            upload_counts[user] = 0
+        upload_counts[user] += 1
+        count = upload_counts[user]
+        
+        # Formater la date plus joliment
+        dt_str = up['datetime']
+        if " à " in dt_str:
+            date_part, time_part = dt_str.split(" à ")
+            dt_obj = datetime.strptime(date_part + time_part, "%Y%m%d%H%M%S")
+            formatted_date = dt_obj.strftime("%d/%m à %H:%M")
+        else:
+            formatted_date = dt_str
+            
+        # Afficher avec un nom simplifié "Liste X"
+        st.sidebar.markdown(
+            f"**Liste {len(uploads)-i+1}** (par {user})  \n"
+            f"<small>{formatted_date}</small>  \n"
+            f"<small><code>{up['filename']}</code></small>",
+            unsafe_allow_html=True
+        )
 
 # Graphique des factures par mois
 dates = []
