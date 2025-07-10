@@ -44,7 +44,7 @@ def status_bar():
                      style="width: 70px; height: 70px; border-radius: 50%; object-fit: cover;">
                 <div style="display: flex; flex-direction: column; gap: 5px;">
                     <p style="margin: 0; font-weight: bold; font-size: 14px;">Connecté en tant que</p>
-                    <p style="margin: 0; color: #2e86c1; font-size: 18px; font-weight: 500;">{st.session_state.username}</p>
+                    <p style="margin: 0; color: #5872fb; font-size: 18px; font-weight: 500;">{st.session_state.username}</p>
                     <p style="margin: 0; font-size: 14px; color: #555;">{users[st.session_state.username]['magasin']}</p>
                 </div>
             </div>
@@ -66,8 +66,8 @@ def status_bar():
         with col2:
             st.markdown(f"""
             <div style="background-color: #f0f2f6; padding: 15px; border-radius: 10px; margin-top: 10px;">
-                <p style="margin: 0; font-weight: bold; font-size: 14px;">Dernier fichier chargé</p>
-                <p style="margin: 0; color: #2e86c1; font-size: 16px; font-weight: 500;">Par {last_upload_user}</p>
+                <p style="margin: 0; font-weight: bold; font-size: 14px;">Dernier fichier chargé par</p>
+                <p style="margin: 0; color: #5872fb; font-size: 16px; font-weight: 500;">{last_upload_user}</p>
                 <p style="margin: 0; font-size: 14px; color: #555;">{formatted_date}</p>
             </div>
             """, unsafe_allow_html=True)
@@ -174,6 +174,9 @@ if uploads_file.exists():
 
 # Afficher la barre d'état
 status_bar()
+
+# Ajout d'espace entre la barre d'état et le file_uploader
+st.markdown("<div style='margin-bottom: 30px;'></div>", unsafe_allow_html=True)
 
 # --- Sélection du fichier uploadé à afficher ---
 st.sidebar.markdown("<h3 style='color: #5872fb;'>Sélection de la liste à afficher</h3>", unsafe_allow_html=True)
