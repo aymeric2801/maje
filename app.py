@@ -130,12 +130,22 @@ if uploads_file.exists():
 # Afficher le dernier upload
 if uploads:
     last_upload = uploads[-1]
-    last_upload_time = last_upload.get("datetime", "").replace("_", " à ")
+    # Extraire les parties de la date
+    dt_str = last_upload.get("datetime", "")
+    if " à " in dt_str:
+        date_part, time_part = dt_str.split(" à ")
+        # Convertir en datetime
+        dt_obj = datetime.strptime(date_part + time_part, "%Y%m%d%H%M%S")
+        # Formater selon le nouveau format
+        formatted_date = dt_obj.strftime("%d/%m/%Y à %H:%M")
+    else:
+        formatted_date = dt_str  # Fallback si le format n'est pas reconnu
+    
     last_upload_user = last_upload.get("user", "N/A")
     
     st.markdown(f"""
     <div style="margin: 20px 0 30px 0;">
-        Dernière liste ajoutée par <strong>{last_upload_user}</strong> le {last_upload_time}
+        Dernière liste ajoutée par <strong>{last_upload_user}</strong> le {formatted_date}
     </div>
     """, unsafe_allow_html=True)
 
