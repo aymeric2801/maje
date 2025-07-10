@@ -4,11 +4,19 @@
     "magasin": "acuitis lormont"
   },
   "Gabrielle": {
-    "password_hash": "202cb962ac59075b964b07152d234b70",
+    "password_hash": "2506dac983c01d48d2771377cf770b14",
     "magasin": "Acuitis Langon"
   },
   "Jeremy": {
-    "password_hash": "098f6bcd4621d373cade4e832627b4f6",
+    "password_hash": "182c24a567b3a105b83f1e282c6c879b",
+    "magasin": "Acuitis Langon"
+  },
+  "Valerianne": {
+    "password_hash": "480c466e2c7b33169b5f62fb3bb55d5b",
+    "magasin": "Acuitis Langon"
+  },
+  "Baptiste": {
+    "password_hash": "38e39ea20695891527ac485a709b7b34",
     "magasin": "Acuitis Langon"
   }
 }
