@@ -11,8 +11,11 @@ import plotly.express as px
 import base64
 
 
-# 👉 Forcer le mode large
-st.set_page_config(layout="wide")
+st.set_page_config(
+    page_title="Pingster",  # Titre qui apparaîtra dans l'onglet
+    page_icon="icon.png",  # Emoji ou chemin vers une image
+    layout="wide"  # Optionnel: layout de la page
+)
 
 def get_profile_picture(username):
     # Chemin par défaut
