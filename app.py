@@ -897,7 +897,7 @@ elif st.session_state.current_tab == "Tableau de Bord":
         st.plotly_chart(fig_anciennete, use_container_width=True)
     
     # --- Paramètres du tableau de bord ---
-    with st.expander("🔍 Paramètres du tableau de bord", expanded=True):
+    with st.expander("Paramètres du classement", expanded=True):
         col1, col2 = st.columns(2)
         
         with col1:
