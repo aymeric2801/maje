@@ -1,22 +1,27 @@
 {
   "aymeric": {
     "password_hash": "482c811da5d5b4bc6d497ffa98491e38",
-    "magasin": "acuitis lormont"
+    "magasin": "acuitis lormont",
+    "type": "standard"
   },
   "Gabrielle": {
     "password_hash": "2506dac983c01d48d2771377cf770b14",
-    "magasin": "Acuitis Langon"
+    "magasin": "Acuitis Langon",
+    "type": "editeur"
   },
   "Jeremy": {
     "password_hash": "182c24a567b3a105b83f1e282c6c879b",
-    "magasin": "Acuitis Langon"
+    "magasin": "Acuitis Langon",
+    "type": "editeur"
   },
   "Valerianne": {
     "password_hash": "480c466e2c7b33169b5f62fb3bb55d5b",
-    "magasin": "Acuitis Langon"
+    "magasin": "Acuitis Langon",
+    "type": "standard"
   },
   "Baptiste": {
     "password_hash": "38e39ea20695891527ac485a709b7b34",
-    "magasin": "Acuitis Langon"
+    "magasin": "Acuitis Langon",
+    "type": "standard"
   }
 }

@@ -1,0 +1,68 @@
+{
+  "ventes": [
+    {
+      "vendeur": "Valerianne",
+      "date": "09/07/2025",
+      "type": "Tranquillité Audio",
+      "enregistree_par": "Gabrielle",
+      "timestamp": "2025-07-11T17:28:28.814913"
+    },
+    {
+      "vendeur": "Baptiste",
+      "date": "09/07/2025",
+      "type": "Tranquillité Or Optique",
+      "enregistree_par": "Gabrielle",
+      "timestamp": "2025-07-11T17:28:53.901661"
+    },
+    {
+      "vendeur": "Valerianne",
+      "date": "11/07/2025",
+      "type": "Tranquillité Or Optique",
+      "enregistree_par": "Gabrielle",
+      "timestamp": "2025-07-11T17:29:14.936370"
+    },
+    {
+      "vendeur": "Valerianne",
+      "date": "11/06/2025",
+      "type": "Tranquillité Or Optique",
+      "enregistree_par": "Gabrielle",
+      "timestamp": "2025-07-11T17:29:25.318416"
+    },
+    {
+      "vendeur": "Gabrielle",
+      "date": "12/07/2025",
+      "type": "Little Acuitis Or",
+      "enregistree_par": "Jeremy",
+      "timestamp": "2025-07-12T13:05:23.003131"
+    },
+    {
+      "vendeur": "Gabrielle",
+      "date": "17/07/2025",
+      "type": "Little Acuitis Or",
+      "enregistree_par": "Jeremy",
+      "timestamp": "2025-07-12T13:05:25.572741"
+    },
+    {
+      "vendeur": "Gabrielle",
+      "date": "17/07/2025",
+      "type": "Little Acuitis Or",
+      "enregistree_par": "Jeremy",
+      "timestamp": "2025-07-12T13:05:28.236694"
+    },
+    {
+      "vendeur": "Gabrielle",
+      "date": "17/07/2025",
+      "type": "Little Acuitis Or",
+      "enregistree_par": "Jeremy",
+      "timestamp": "2025-07-12T13:05:30.631889"
+    },
+    {
+      "vendeur": "Gabrielle",
+      "date": "17/07/2025",
+      "type": "Little Acuitis Or",
+      "enregistree_par": "Jeremy",
+      "timestamp": "2025-07-12T13:05:31.101851"
+    }
+  ],
+  "taux": 10
+}

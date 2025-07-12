@@ -146,6 +146,22 @@ MAGASIN = users[USER]["magasin"].lower()
 GROUP_FOLDER = Path("users") / MAGASIN
 GROUP_FOLDER.mkdir(parents=True, exist_ok=True)
 
+PRIMES_FILE = GROUP_FOLDER / "primes.json"
+
+
+def load_primes():
+    if PRIMES_FILE.exists():
+        try:
+            with open(PRIMES_FILE, encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            return {"ventes": [], "taux": 10}  # Valeur par défaut 10%
+    return {"ventes": [], "taux": 10}
+
+def save_primes(data):
+    with open(PRIMES_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
 # -- Gestion des relances partagées au niveau de la magasin --
 fichier_relances = GROUP_FOLDER / "relances.json"
 relances = {}
@@ -225,7 +241,7 @@ st.markdown("""
 # -- Onglets principaux --
 st.session_state.current_tab = st.sidebar.radio(
     "Navigation",
-    [ "Tableau de Bord", "Relance Devis", "Relance Facture"],  # Ajout du nouvel onglet
+    [ "Tableau de Bord", "Relance Devis", "Relance Facture", "Suivi des primes"],  # Ajout du nouvel onglet
     index=0,
     label_visibility="collapsed"
 )
@@ -1107,3 +1123,120 @@ elif st.session_state.current_tab == "Tableau de Bord":
             marker_line_width=1)
         
         st.plotly_chart(fig, use_container_width=True, use_container_height=True)
+
+
+# --- Onglet Suivi des primes ---
+elif st.session_state.current_tab == "Suivi des primes":
+    st.markdown("<h1 style='color: #5872fb;'>SUIVI DES PRIMES</h1>", unsafe_allow_html=True)
+    
+    primes_data = load_primes()
+
+    taux_prime = primes_data.get("taux", 10)
+    ventes = primes_data.get("ventes", [])
+    
+    # Vérifier si l'utilisateur est un éditeur
+    is_editeur = users.get(USER, {}).get("type") == "editeur"
+    
+    if is_editeur:
+        with st.expander("➕ Ajouter une vente de carte"):
+            with st.form(key="form_ajout_vente"):
+                # Sélectionner le vendeur (uniquement ceux du même magasin)
+                vendeurs_magasin = [u for u, data in users.items() 
+                                  if data.get("magasin", "").lower() == MAGASIN 
+                                  and u != USER]  # Exclure l'éditeur lui-même
+                
+                vendeur = st.selectbox("Vendeur", options=vendeurs_magasin)
+                date_vente = st.date_input("Date de vente", datetime.today())
+                type_carte = st.selectbox("Type de carte", 
+                                        ["Little Acuitis Or", "Tranquillité Or Optique", "Tranquillité Audio"])
+                
+                if st.form_submit_button("Enregistrer la vente"):
+                    nouvelle_vente = {
+                        "vendeur": vendeur,
+                        "date": date_vente.strftime("%d/%m/%Y"),
+                        "type": type_carte,
+                        "enregistree_par": USER,
+                        "timestamp": datetime.now().isoformat()
+                    }
+                    ventes.append(nouvelle_vente)
+                    primes_data["ventes"] = ventes
+                    save_primes(primes_data)
+                    st.success("Vente enregistrée avec succès !")
+                    st.rerun()
+        
+        with st.expander("⚙️ Paramètres des primes"):
+            with st.form(key="form_taux_prime"):
+                nouveau_taux = st.slider("Taux de prime (%)", min_value=0, max_value=100, value=taux_prime)
+                if st.form_submit_button("Enregistrer le taux"):
+                    primes_data["taux"] = nouveau_taux
+                    save_primes(primes_data)
+                    st.success(f"Taux de prime mis à jour à {nouveau_taux}%")
+                    st.rerun()
+    
+    # Calcul des primes par mois
+    st.markdown("## Calcul des primes")
+    
+    # Prix des cartes
+    prix_cartes = {
+        "Little Acuitis Or": 30,
+        "Tranquillité Or Optique": 45,
+        "Tranquillité Audio": 150
+    }
+    
+    # Sélection du mois à afficher
+    mois_courant = datetime.now().strftime("%m/%Y")
+    mois_disponibles = set()
+    
+    for vente in ventes:
+        try:
+            date_obj = datetime.strptime(vente["date"], "%d/%m/%Y")
+            mois_disponibles.add(date_obj.strftime("%m/%Y"))
+        except:
+            pass
+    
+    mois_disponibles = sorted(mois_disponibles, reverse=True)
+    if mois_courant not in mois_disponibles:
+        mois_disponibles.insert(0, mois_courant)
+    
+    mois_selectionne = st.selectbox("Mois à afficher", options=mois_disponibles, index=0)
+    
+    # Filtrer les ventes du mois sélectionné
+    ventes_mois = []
+    for vente in ventes:
+        try:
+            date_obj = datetime.strptime(vente["date"], "%d/%m/%Y")
+            if date_obj.strftime("%m/%Y") == mois_selectionne:
+                ventes_mois.append(vente)
+        except:
+            pass
+    
+    # Calculer le total des primes
+    total_prime = 0
+    details_ventes = []
+    
+    for vente in ventes_mois:
+        type_carte = vente["type"]
+        prix = prix_cartes.get(type_carte, 0)
+        prime = prix * (taux_prime / 100)
+        total_prime += prime
+        
+        details_ventes.append({
+            "Vendeur": vente["vendeur"],
+            "Date": vente["date"],
+            "Type de carte": type_carte,
+            "Prix (€)": prix,
+            "Prime (€)": prime,  # Stocker directement le float au lieu d'un string formaté
+            "Enregistrée par": vente.get("enregistree_par", "N/A")
+        })
+    
+    # Afficher le total
+    st.metric("Total des primes du mois", f"{total_prime:.2f} €")
+    
+    # Afficher le détail des ventes
+    if details_ventes:
+        df = pd.DataFrame(details_ventes)
+        styled_df = df.style.format({
+            "Prix (€)": "{:.2f} €",
+            "Prime (€)": "{:.2f} €"
+        })
+        st.dataframe(styled_df, hide_index=True, use_container_width=True)
