@@ -396,7 +396,15 @@ if st.session_state.current_tab == "Relance Facture":
         "VIR": "Client"
     }
 
-    st.markdown("<h1 style='color: #5872fb;'>LISTE DES FACTURES</h1>", unsafe_allow_html=True)
+    st.markdown(
+        """
+        <h1 style='color: #5872fb; font-family: Montserrat, sans-serif; font-weight: 700; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2); text-align: center;'>
+            LISTE DES FACTURES
+        </h1>
+        """,
+        unsafe_allow_html=True
+    )
+    st.markdown("<br>", unsafe_allow_html=True)  # Espace ajouté ici
 
     types_disponibles = set()
     for row in reader:
@@ -606,7 +614,15 @@ if st.session_state.current_tab == "Relance Facture":
 
 # --- Onglet Relance Devis ---
 elif st.session_state.current_tab == "Relance Devis":
-    st.markdown("<h1 style='color: #5872fb;'>RELANCE DEVIS</h1>", unsafe_allow_html=True)
+    st.markdown(
+        """
+        <h1 style='color: #5872fb; font-family: Montserrat, sans-serif; font-weight: 700; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2); text-align: center;'>
+            RELANCE DEVIS
+        </h1>
+        """,
+        unsafe_allow_html=True
+    )
+    st.markdown("<br>", unsafe_allow_html=True)  # Espace ajouté ici
     
     # Formulaire pour ajouter un nouveau devis
     with st.form(key="form_nouveau_devis"):
@@ -1166,7 +1182,15 @@ elif st.session_state.current_tab == "Tableau de Bord":
 
 # --- Onglet Suivi des primes ---
 elif st.session_state.current_tab == "Suivi des primes":
-    st.markdown("<h1 style='color: #5872fb;'>SUIVI DES PRIMES</h1>", unsafe_allow_html=True)
+    st.markdown(
+        """
+        <h1 style='color: #5872fb; font-family: Montserrat, sans-serif; font-weight: 700; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2); text-align: center;'>
+            SUIVI DES PRIMES
+        </h1>
+        """,
+        unsafe_allow_html=True
+    )
+    st.markdown("<br>", unsafe_allow_html=True)  # Espace ajouté ici
     
     primes_data = load_primes()
 
@@ -1282,7 +1306,15 @@ elif st.session_state.current_tab == "Suivi des primes":
 
 # --- Onglet Suivi des tâches ---
 elif st.session_state.current_tab == "Suivi des tâches":
-    st.markdown("<h1 style='color: #5872fb;'>SUIVI DES TÂCHES</h1>", unsafe_allow_html=True)
+    st.markdown(
+        """
+        <h1 style='color: #5872fb; font-family: Montserrat, sans-serif; font-weight: 700; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2); text-align: center;'>
+            SUIVI DES TACHES
+        </h1>
+        """,
+        unsafe_allow_html=True
+    )
+    st.markdown("<br>", unsafe_allow_html=True)  # Espace ajouté ici
     
     # Fichier de stockage des tâches
     TACHES_FILE = GROUP_FOLDER / "taches.json"
