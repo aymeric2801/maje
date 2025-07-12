@@ -1543,6 +1543,6 @@ elif st.session_state.current_tab == "Suivi des tâches":
                         
                         if tache.get("modifications"):
                             st.markdown("---")
-                            st.markdown("### 📜 Historique des modifications")
+                            st.markdown("### Historique des modifications")
                             for mod in reversed(tache["modifications"]):
                                 st.markdown(f"**{mod['date']} — {mod['utilisateur']}**  \n{mod['action']}")
