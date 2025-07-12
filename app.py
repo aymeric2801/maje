@@ -828,9 +828,14 @@ elif st.session_state.current_tab == "Tableau de Bord":
             if anciennete in anciennetes:
                 anciennetes[anciennete] += montant
         
-        # Afficher les KPI
-        col1, col2, col3 = st.columns(3)
-        
+        # Afficher les KPI avec le logo à gauche
+        col_logo, col1, col2 = st.columns([1, 2, 2])
+
+        with col_logo:
+            # Afficher le logo
+            logo_kpi = Image.open("flechy/flechy_kpi.png")
+            st.image(logo_kpi, width=160)  # Ajustez la largeur selon vos besoins
+
         with col1:
             st.markdown("""
             <div style="background-color: #f0f2f6; padding: 20px; border-radius: 10px; text-align: center;">
@@ -838,7 +843,7 @@ elif st.session_state.current_tab == "Tableau de Bord":
                 <p style="font-size: 24px; font-weight: bold; margin-bottom: 0;">{}</p>
             </div>
             """.format(len(factures_impayees)), unsafe_allow_html=True)
-        
+
         with col2:
             st.markdown("""
             <div style="background-color: #f0f2f6; padding: 20px; border-radius: 10px; text-align: center;">
@@ -846,15 +851,6 @@ elif st.session_state.current_tab == "Tableau de Bord":
                 <p style="font-size: 24px; font-weight: bold; margin-bottom: 0;">{:.2f} €</p>
             </div>
             """.format(montant_total), unsafe_allow_html=True)
-        
-        with col3:
-            relance_count = sum(len(v) for v in relances.values())
-            st.markdown("""
-            <div style="background-color: #f0f2f6; padding: 20px; border-radius: 10px; text-align: center;">
-                <h3 style="color: #5872fb; margin-top: 0;">Relances facture</h3>
-                <p style="font-size: 24px; font-weight: bold; margin-bottom: 0;">{}</p>
-            </div>
-            """.format(relance_count), unsafe_allow_html=True)
         
         # Graphiques côte à côte
         st.markdown("<br>", unsafe_allow_html=True)  # Espace ajouté ici avant le titre
