@@ -856,61 +856,65 @@ elif st.session_state.current_tab == "Tableau de Bord":
             </div>
             """.format(relance_count), unsafe_allow_html=True)
         
-        # Graphiques
+        # Graphiques côte à côte
         st.markdown("<br>", unsafe_allow_html=True)  # Espace ajouté ici avant le titre
-        st.markdown("### Répartition par type")
-        df_repartition = pd.DataFrame({
-            "Type": list(repartition.keys()),
-            "Montant": list(repartition.values())
-        })
+        col_graph1, col_graph2 = st.columns(2)
         
-        fig_repartition = px.pie(
-            df_repartition,
-            names="Type",
-            values="Montant",
-            color_discrete_sequence=['#5872fb', '#8a9eff', '#c0c9ff', '#e0e4ff'],
-            hole=0.4
-        )
-        fig_repartition.update_traces(
-            textposition='inside',
-            textinfo='percent+label',
-            textfont_size=14
-        )
-        fig_repartition.update_layout(
-            showlegend=False,
-            margin=dict(l=20, r=20, t=30, b=20)
-        )
+        with col_graph1:
+            st.markdown("### Répartition par type")
+            df_repartition = pd.DataFrame({
+                "Type": list(repartition.keys()),
+                "Montant": list(repartition.values())
+            })
+            
+            fig_repartition = px.pie(
+                df_repartition,
+                names="Type",
+                values="Montant",
+                color_discrete_sequence=['#5872fb', '#8a9eff', '#c0c9ff', '#e0e4ff'],
+                hole=0.4
+            )
+            fig_repartition.update_traces(
+                textposition='inside',
+                textinfo='percent+label',
+                textfont_size=14
+            )
+            fig_repartition.update_layout(
+                showlegend=False,
+                margin=dict(l=20, r=20, t=30, b=20)
+            )
+            
+            st.plotly_chart(fig_repartition, use_container_width=True)
         
-        st.plotly_chart(fig_repartition, use_container_width=True)
-        
-        st.markdown("### Ancienneté des factures impayées")
-        df_anciennete = pd.DataFrame({
-            "Ancienneté": list(anciennetes.keys()),
-            "Montant": list(anciennetes.values())
-        })
-        
-        fig_anciennete = px.bar(
-            df_anciennete,
-            x="Ancienneté",
-            y="Montant",
-            color_discrete_sequence=['#5872fb']*4,
-            text="Montant"
-        )
-        fig_anciennete.update_traces(
-            texttemplate='%{y:.2f} €',
-            textposition='outside',
-            marker_line_width=0,
-            marker_color='#5872fb'
-        )
-        fig_anciennete.update_layout(
-            showlegend=False,
-            xaxis_title=None,
-            yaxis_title="Montant (€)",
-            uniformtext_minsize=12,
-            plot_bgcolor="white"
-        )
-        
-        st.plotly_chart(fig_anciennete, use_container_width=True)
+        with col_graph2:
+            st.markdown("### Ancienneté des factures impayées")
+            df_anciennete = pd.DataFrame({
+                "Ancienneté": list(anciennetes.keys()),
+                "Montant": list(anciennetes.values())
+            })
+            
+            fig_anciennete = px.bar(
+                df_anciennete,
+                x="Ancienneté",
+                y="Montant",
+                color_discrete_sequence=['#5872fb']*4,
+                text="Montant"
+            )
+            fig_anciennete.update_traces(
+                texttemplate='%{y:.2f} €',
+                textposition='outside',
+                marker_line_width=0,
+                marker_color='#5872fb'
+            )
+            fig_anciennete.update_layout(
+                showlegend=False,
+                xaxis_title=None,
+                yaxis_title="Montant (€)",
+                uniformtext_minsize=12,
+                plot_bgcolor="white"
+            )
+            
+            st.plotly_chart(fig_anciennete, use_container_width=True)
     
     # --- Paramètres du tableau de bord ---
     with st.expander("Paramètres du classement", expanded=True):
