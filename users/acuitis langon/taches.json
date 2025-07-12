@@ -1,0 +1,28 @@
+{
+  "actives": [],
+  "archivees": [
+    {
+      "id": "1752319020.352779",
+      "titre": "acheter du café",
+      "description": "voluto",
+      "priorite": "Haute",
+      "date_creation": "12/07/2025 13:17",
+      "date_echeance": "17/07/2025",
+      "attribue_a": "Jeremy",
+      "createur": "Gabrielle",
+      "statut": "Terminée",
+      "modifications": [
+        {
+          "date": "12/07/2025 13:17",
+          "utilisateur": "Gabrielle",
+          "action": "Création de la tâche"
+        },
+        {
+          "date": "12/07/2025 13:17",
+          "utilisateur": "Gabrielle",
+          "action": "Statut changé à 'Terminée', échéance modifiée au 17/07/2025 | Commentaire: j'en ai pris 7"
+        }
+      ]
+    }
+  ]
+}

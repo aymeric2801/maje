@@ -241,7 +241,7 @@ st.markdown("""
 # -- Onglets principaux --
 st.session_state.current_tab = st.sidebar.radio(
     "Navigation",
-    [ "Tableau de Bord", "Relance Devis", "Relance Facture", "Suivi des primes"],  # Ajout du nouvel onglet
+    [ "Tableau de Bord", "Relance Devis", "Relance Facture", "Suivi des primes","Suivi des tâches"],  # Ajout du nouvel onglet
     index=0,
     label_visibility="collapsed"
 )
@@ -1240,3 +1240,309 @@ elif st.session_state.current_tab == "Suivi des primes":
             "Prime (€)": "{:.2f} €"
         })
         st.dataframe(styled_df, hide_index=True, use_container_width=True)
+
+# --- Onglet Suivi des tâches ---
+elif st.session_state.current_tab == "Suivi des tâches":
+    st.markdown("<h1 style='color: #5872fb;'>SUIVI DES TÂCHES</h1>", unsafe_allow_html=True)
+    
+    # Fichier de stockage des tâches
+    TACHES_FILE = GROUP_FOLDER / "taches.json"
+    
+    # Charger les tâches existantes
+    def load_taches():
+        if TACHES_FILE.exists():
+            try:
+                with open(TACHES_FILE, encoding="utf-8") as f:
+                    return json.load(f)
+            except:
+                return {"actives": [], "archivees": []}
+        return {"actives": [], "archivees": []}
+    
+    def save_taches(data):
+        with open(TACHES_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    
+    taches_data = load_taches()
+    taches_actives = taches_data.get("actives", [])
+    taches_archivees = taches_data.get("archivees", [])
+    
+    # Formulaire pour créer une nouvelle tâche
+    with st.expander("➕ Créer une nouvelle tâche", expanded=True):
+        with st.form(key="form_nouvelle_tache"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                titre = st.text_input("Titre de la tâche*", help="Titre clair et descriptif")
+                description = st.text_area("Description*")
+                priorite = st.selectbox("Priorité*", ["Haute", "Moyenne", "Basse"])
+                
+            with col2:
+                date_echeance = st.date_input("Date d'échéance*", min_value=datetime.today())
+                attribue_a = st.selectbox(
+                    "Attribuée à*", 
+                    options=[u for u in users.keys() if users[u]["magasin"].lower() == MAGASIN],
+                    index=0
+                )
+                createur = USER  # Récupéré automatiquement
+            
+            submit = st.form_submit_button("💾 Créer la tâche")
+            
+            if submit:
+                if not titre or not description:
+                    st.error("Les champs avec * sont obligatoires.")
+                else:
+                    nouvelle_tache = {
+                        "id": str(datetime.now().timestamp()),
+                        "titre": titre,
+                        "description": description,
+                        "priorite": priorite,
+                        "date_creation": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                        "date_echeance": date_echeance.strftime("%d/%m/%Y"),
+                        "attribue_a": attribue_a,
+                        "createur": createur,
+                        "statut": "En cours",
+                        "modifications": [{
+                            "date": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                            "utilisateur": createur,
+                            "action": "Création de la tâche"
+                        }]
+                    }
+                    
+                    taches_actives.append(nouvelle_tache)
+                    taches_data["actives"] = taches_actives
+                    save_taches(taches_data)
+                    st.success("Tâche créée avec succès !")
+                    st.rerun()
+    
+    # Filtres pour les tâches
+    with st.expander("🔍 Filtres", expanded=True):
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            filtre_attribue = st.multiselect(
+                "Attribuée à",
+                options=list(set([u for u in users.keys() if users[u]["magasin"].lower() == MAGASIN])),
+                default=[]
+            )
+            
+        with col2:
+            filtre_createur = st.multiselect(
+                "Créée par",
+                options=list(set([u for u in users.keys() if users[u]["magasin"].lower() == MAGASIN])),
+                default=[]
+            )
+            
+        with col3:
+            filtre_priorite = st.multiselect(
+                "Priorité",
+                options=["Haute", "Moyenne", "Basse"],
+                default=["Haute", "Moyenne", "Basse"]
+            )
+    
+    # Fonction pour déterminer le statut de la tâche
+    def get_tache_statut(tache):
+        if tache.get("statut") == "Terminée":
+            return "Terminée"
+        
+        try:
+            echeance = datetime.strptime(tache["date_echeance"], "%d/%m/%Y")
+            aujourdhui = datetime.today()
+            
+            if echeance < aujourdhui:
+                return "En retard"
+            elif (echeance - aujourdhui).days <= 2:
+                return "À faire bientôt"
+            else:
+                return "En cours"
+        except:
+            return "En cours"
+    
+    # Afficher les tâches actives filtrées
+    st.markdown("## Tâches en cours")
+    
+    taches_filtrees = []
+    for tache in taches_actives:
+        # Appliquer les filtres
+        if filtre_attribue and tache["attribue_a"] not in filtre_attribue:
+            continue
+        if filtre_createur and tache["createur"] not in filtre_createur:
+            continue
+        if filtre_priorite and tache["priorite"] not in filtre_priorite:
+            continue
+            
+        taches_filtrees.append(tache)
+    
+    if not taches_filtrees:
+        st.info("Aucune tâche ne correspond aux filtres sélectionnés.")
+    else:
+        # Trier les tâches (en retard d'abord, puis par priorité et date d'échéance)
+        def sort_key(tache):
+            statut = get_tache_statut(tache)
+            priority_order = {"Haute": 0, "Moyenne": 1, "Basse": 2}
+            
+            return (
+                0 if statut == "En retard" else 
+                1 if statut == "À faire bientôt" else 2,
+                priority_order[tache["priorite"]],
+                datetime.strptime(tache["date_echeance"], "%d/%m/%Y")
+            )
+        
+        taches_filtrees.sort(key=sort_key)
+        
+        for tache in taches_filtrees:
+            statut = get_tache_statut(tache)
+            
+            # Déterminer la couleur en fonction du statut
+            if statut == "En retard":
+                border_color = "#ff4b4b"
+                statut_text = "🟠 EN RETARD"
+            elif statut == "À faire bientôt":
+                border_color = "#ffa500"
+                statut_text = "🔜 À FAIRE BIENTÔT"
+            else:
+                border_color = "#5872fb"
+                statut_text = "🟢 EN COURS"
+            
+            with st.container(border=True):
+                # En-tête de la tâche
+                col1, col2 = st.columns([3, 1])
+                
+                with col1:
+                    st.markdown(f"### {tache['titre']}")
+                    
+                with col2:
+                    st.markdown(f"""
+                    <div style="
+                        background-color: #f0f2f6;
+                        padding: 5px 10px;
+                        border-radius: 20px;
+                        text-align: center;
+                        border: 1px solid {border_color};
+                        color: {border_color};
+                        font-weight: bold;
+                    ">
+                        {statut_text}
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Détails de la tâche
+                col_details1, col_details2 = st.columns(2)
+                
+                with col_details1:
+                    st.markdown(f"""
+                    - **Priorité:** {tache['priorite']}
+                    - **Créée par:** {tache['createur']}
+                    - **Date création:** {tache['date_creation']}
+                    """)
+                
+                with col_details2:
+                    st.markdown(f"""
+                    - **Attribuée à:** {tache['attribue_a']}
+                    - **Échéance:** {tache['date_echeance']}
+                    - **Statut:** {tache.get('statut', 'En cours')}
+                    """)
+                
+                # Description et actions
+                with st.expander("📝 Voir la description et les actions"):
+                    st.markdown(f"**Description:**  \n{tache['description']}")
+                    
+                    # Historique des modifications
+                    if tache.get("modifications"):
+                        st.markdown("---")
+                        st.markdown("### 📜 Historique des modifications")
+                        for mod in reversed(tache["modifications"]):
+                            st.markdown(f"**{mod['date']} — {mod['utilisateur']}**  \n{mod['action']}")
+                    
+                    # Formulaire de modification
+                    with st.form(key=f"form_modif_{tache['id']}"):
+                        new_statut = st.selectbox(
+                            "Modifier le statut",
+                            options=["En cours", "Terminée", "En attente"],
+                            index=0 if tache.get("statut") != "Terminée" else 1
+                        )
+                        
+                        new_date_echeance = st.date_input(
+                            "Modifier la date d'échéance",
+                            value=datetime.strptime(tache["date_echeance"], "%d/%m/%Y")
+                        )
+                        
+                        new_commentaire = st.text_area("Ajouter un commentaire")
+                        
+                        col_btn1, col_btn2 = st.columns(2)
+                        
+                        with col_btn1:
+                            if st.form_submit_button("💾 Enregistrer les modifications"):
+                                # Enregistrer les modifications
+                                modification = {
+                                    "date": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                                    "utilisateur": USER,
+                                    "action": f"Statut changé à '{new_statut}'"
+                                }
+                                
+                                if new_date_echeance.strftime("%d/%m/%Y") != tache["date_echeance"]:
+                                    modification["action"] += f", échéance modifiée au {new_date_echeance.strftime('%d/%m/%Y')}"
+                                
+                                if new_commentaire:
+                                    modification["action"] += f" | Commentaire: {new_commentaire}"
+                                
+                                tache["statut"] = new_statut
+                                tache["date_echeance"] = new_date_echeance.strftime("%d/%m/%Y")
+                                
+                                if "modifications" not in tache:
+                                    tache["modifications"] = []
+                                tache["modifications"].append(modification)
+                                
+                                # Si la tâche est terminée, la déplacer dans les archives
+                                if new_statut == "Terminée":
+                                    taches_actives.remove(tache)
+                                    taches_archivees.append(tache)
+                                
+                                taches_data["actives"] = taches_actives
+                                taches_data["archivees"] = taches_archivees
+                                save_taches(taches_data)
+                                st.success("Tâche mise à jour !")
+                                st.rerun()
+                        
+                        with col_btn2:
+                            if st.form_submit_button("🗑️ Supprimer cette tâche"):
+                                taches_actives.remove(tache)
+                                taches_data["actives"] = taches_actives
+                                save_taches(taches_data)
+                                st.success("Tâche supprimée !")
+                                st.rerun()
+    
+    # Section archives
+    st.markdown("## Tâches archivées")
+    
+    if not taches_archivees:
+        st.info("Aucune tâche archivée pour le moment.")
+    else:
+        with st.expander("Voir les tâches archivées", expanded=False):
+            for tache in reversed(taches_archivees[-20:]):  # Limiter à 20 dernières tâches
+                with st.container(border=True):
+                    st.markdown(f"### {tache['titre']}")
+                    
+                    col_arch1, col_arch2 = st.columns(2)
+                    
+                    with col_arch1:
+                        st.markdown(f"""
+                        - **Priorité:** {tache['priorite']}
+                        - **Créée par:** {tache['createur']}
+                        - **Date création:** {tache['date_creation']}
+                        """)
+                    
+                    with col_arch2:
+                        st.markdown(f"""
+                        - **Attribuée à:** {tache['attribue_a']}
+                        - **Échéance:** {tache['date_echeance']}
+                        - **Statut:** Terminée
+                        """)
+                    
+                    with st.expander("📝 Voir les détails"):
+                        st.markdown(f"**Description:**  \n{tache['description']}")
+                        
+                        if tache.get("modifications"):
+                            st.markdown("---")
+                            st.markdown("### 📜 Historique des modifications")
+                            for mod in reversed(tache["modifications"]):
+                                st.markdown(f"**{mod['date']} — {mod['utilisateur']}**  \n{mod['action']}")
