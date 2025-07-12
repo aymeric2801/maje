@@ -731,7 +731,14 @@ elif st.session_state.current_tab == "Relance Devis":
 
 # --- Nouvel Onglet Tableau de Bord ---
 elif st.session_state.current_tab == "Tableau de Bord":
-    st.markdown("<h1 style='color: #5872fb;'>TABLEAU DE BORD</h1>", unsafe_allow_html=True)
+    st.markdown(
+        """
+        <h1 style='color: #5872fb; font-family: Montserrat, sans-serif; font-weight: 700; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2); text-align: center;'>
+            TABLEAU DE BORD
+        </h1>
+        """,
+        unsafe_allow_html=True
+    )
     st.markdown("<br>", unsafe_allow_html=True)  # Espace ajouté ici
     
     # Dictionnaire de mapping des types
@@ -873,11 +880,35 @@ elif st.session_state.current_tab == "Tableau de Bord":
             fig_repartition.update_traces(
                 textposition='inside',
                 textinfo='percent+label',
-                textfont_size=14
+                textfont_size=16,  # Augmenter la taille de la police pour plus de lisibilité
+                textfont=dict(color='black'),  # Couleur des étiquettes pour contraste
+                hoverinfo='label+percent+value',  # Plus d'infos au survol
+                marker=dict(line=dict(color='#ffffff', width=2))  # Séparation visuelle des segments
             )
             fig_repartition.update_layout(
-                showlegend=False,
-                margin=dict(l=20, r=20, t=30, b=20)
+                showlegend=True,  # Activer la légende
+                legend=dict(
+                    orientation="v",  # Légende verticale
+                    yanchor="middle",
+                    y=0.5,
+                    xanchor="right",
+                    x=1.2,  # Position à droite du graphique
+                    font=dict(size=14),  # Taille de police de la légende
+                    bgcolor="rgba(255, 255, 255, 0.8)",  # Fond légèrement opaque
+                    bordercolor="rgba(0, 0, 0, 0.2)",
+                    borderwidth=1
+                ),
+                margin=dict(l=20, r=120, t=30, b=20),  # Ajuster la marge pour la légende
+                annotations=[  # Ajouter une statistique au centre
+                    dict(
+                        text="Total : 136",  # Statistique clé
+                        x=0.5,
+                        y=0.5,
+                        font_size=20,
+                        showarrow=False,
+                        font=dict(color='black')
+                    )
+                ]
             )
             
             st.plotly_chart(fig_repartition, use_container_width=True)
@@ -889,18 +920,21 @@ elif st.session_state.current_tab == "Tableau de Bord":
                 "Montant": list(anciennetes.values())
             })
             
+            # Define a sequence of shades based on #5872fb
+            color_sequence = ['#5872fb', '#6b82fc', '#7e92fd', '#91a2fe']  # Base color and lighter shades
+            
             fig_anciennete = px.bar(
                 df_anciennete,
                 x="Ancienneté",
                 y="Montant",
-                color_discrete_sequence=['#5872fb']*4,
+                color="Ancienneté",  # Assign unique shade per category
+                color_discrete_sequence=color_sequence,
                 text="Montant"
             )
             fig_anciennete.update_traces(
                 texttemplate='%{y:.2f} €',
                 textposition='outside',
-                marker_line_width=0,
-                marker_color='#5872fb'
+                marker_line_width=0
             )
             fig_anciennete.update_layout(
                 showlegend=False,
@@ -1092,16 +1126,20 @@ elif st.session_state.current_tab == "Tableau de Bord":
         st.markdown(f"**Total relances:** {len(toutes_relances)}")
     
     with col_graph:
-        # Graphique horizontal avec couleur unique
-            
+        # Graphique horizontal avec nuances de #5872fb
+        # Define a sequence of shades based on #5872fb
+        color_sequence = ['#5872fb', '#6b82fc', '#7e92fd', '#91a2fe']  # Base color and lighter shades
+        
         fig = px.bar(
             df,
             x="Relances",
             y="Utilisateur",
             orientation='h',
-            color_discrete_sequence=['#5872fb'],
+            color="Utilisateur",  # Assign unique shade per user
+            color_discrete_sequence=color_sequence,
             text="Relances",
-            height=max(400, 50 * len(df)))
+            height=max(400, 50 * len(df))
+        )
         
         # Personnalisation
         fig.update_layout(
@@ -1112,15 +1150,16 @@ elif st.session_state.current_tab == "Tableau de Bord":
             margin=dict(l=20, r=20, t=30, b=20),
             yaxis={'categoryorder':'total ascending'},
             uniformtext_minsize=12,
-            uniformtext_mode='hide')
+            uniformtext_mode='hide'
+        )
         
         fig.update_traces(
             texttemplate='%{x}',
             textposition='outside',
             textfont_size=14,
-            marker_color='#5872fb',
-            marker_line_color='#5872fb',
-            marker_line_width=1)
+            marker_line_color='#5872fb',  # Keep outline consistent
+            marker_line_width=1
+        )
         
         st.plotly_chart(fig, use_container_width=True, use_container_height=True)
 
